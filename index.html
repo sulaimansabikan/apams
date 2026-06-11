@@ -36,6 +36,7 @@
 </head>
 <body class="h-full flex flex-col overflow-hidden text-slate-800">
 
+    <!-- -->
     <!-- NO-CONNECTION/MOCK STATE TOAST -->
     <div id="mockToast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all duration-300 transform scale-0">
         <i data-lucide="wifi-off" class="w-4 h-4"></i>
@@ -50,6 +51,7 @@
         <p id="toastMessage" class="text-xs font-medium"></p>
     </div>
 
+    <!-- -->
     <!-- APP WRAPPER -->
     <div class="flex flex-col md:flex-row h-full w-full overflow-hidden">
         
@@ -67,7 +69,7 @@
 
             <!-- Profile Info -->
             <div class="bg-slate-800/50 p-3 rounded-xl flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-sm" id="profileInitials">
+                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center font-bold text-white text-sm" id="profileInitials">
                     P
                 </div>
                 <div class="overflow-hidden">
@@ -181,6 +183,7 @@
                         <i data-lucide="sparkles" class="absolute right-6 bottom-4 w-28 h-28 text-white/5 pointer-events-none"></i>
                     </div>
 
+                    <!-- -->
                     <!-- KPI Statistics Grid -->
                     <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -238,6 +241,7 @@
                     </div>
                 </div>
 
+                <!-- -->
                 <!-- 3. ACTIVITIES VIEW (CRUD) -->
                 <div id="activitiesView" class="hidden space-y-6">
                     <!-- Action Headers -->
@@ -394,6 +398,7 @@
         </main>
     </div>
 
+    <!-- -->
     <!-- 6. CRUD DIALOG MODAL (ADD & UPDATE VIEW) -->
     <div id="activityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all duration-300 opacity-0 pointer-events-none">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100">
@@ -499,6 +504,7 @@
     </div>
 
 
+    <!-- -->
     <script>
         // MOCK DATABASE & LOCALSTORAGE FALLBACK
         const DEFAULT_MOCK_ACTIVITIES = [
@@ -565,7 +571,7 @@
             lucide.createIcons();
         });
 
-        // VIEW NAVIGATION ENGINE
+        //        // VIEW NAVIGATION ENGINE
         function switchView(viewId) {
             // Hide all views
             const views = ["loginView", "dashboardView", "activitiesView", "reportsView", "settingsView"];
@@ -633,7 +639,7 @@
             lucide.createIcons();
         }
 
-        // EXECUTE AUTH LOGIN
+        //        // EXECUTE AUTH LOGIN
         function executeLogin(event) {
             event.preventDefault();
             const email = document.getElementById("loginEmail").value.trim();
@@ -646,6 +652,7 @@
                 isMockMode = false;
                 fetch(`${systemSettings.apiUrl}?action=login`, {
                     method: "POST",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // MEMINTAS CORS PREFLIGHT OPTIONS
                     body: JSON.stringify({ email, password })
                 })
                 .then(res => res.json())
@@ -723,7 +730,7 @@
             showToast("Sesi log keluar berjaya.", "info");
         }
 
-        // REFRESH DASHBOARD STATISTICS & GRAPHICS
+        //        // REFRESH DASHBOARD STATISTICS & GRAPHICS
         function refreshDashboardData() {
             if (!currentUser) return;
 
@@ -854,7 +861,7 @@
             });
         }
 
-        // LOAD ACTIVITIES DATA FOR DATATABLE
+        //        // LOAD ACTIVITIES DATA FOR DATATABLE
         function loadActivitiesData() {
             if (!currentUser) return;
 
@@ -1039,6 +1046,7 @@
                 const action = activityId ? "updateActivity" : "addActivity";
                 fetch(`${systemSettings.apiUrl}?action=${action}`, {
                     method: "POST",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // MEMINTAS CORS PREFLIGHT OPTIONS
                     body: JSON.stringify(payload)
                 })
                 .then(res => res.json())
@@ -1054,7 +1062,7 @@
                 })
                 .catch(() => {
                     showLoading(false);
-                    showToast("Sambungan awan ralat.", "error");
+                    showToast("Sambungan awan ralat. Pastikan adblocker/perisai dimatikan.", "error");
                 });
             }
         }
@@ -1082,6 +1090,7 @@
             } else {
                 fetch(`${systemSettings.apiUrl}?action=deleteActivity`, {
                     method: "POST",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // MEMINTAS CORS PREFLIGHT OPTIONS
                     body: JSON.stringify({ userId: currentUser.userId, activityId })
                 })
                 .then(res => res.json())
@@ -1101,7 +1110,7 @@
             }
         }
 
-        // DIALOG: UPLOAD FILE MODAL
+        //        // DIALOG: UPLOAD FILE MODAL
         function openUploadModal(activityId, category) {
             document.getElementById("uploadActivityId").value = activityId;
             document.getElementById("uploadCategory").value = category;
@@ -1246,6 +1255,7 @@
 
                 fetch(`${systemSettings.apiUrl}?action=uploadDocument`, {
                     method: "POST",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // MEMINTAS CORS PREFLIGHT OPTIONS
                     body: JSON.stringify(payload)
                 })
                 .then(res => res.json())
@@ -1261,7 +1271,7 @@
                 })
                 .catch(() => {
                     showLoading(false);
-                    showToast("Gagal menghantar fail ke API backend.", "error");
+                    showToast("Gagal menghantar fail ke API backend. Sila semak had API atau Adblocker.", "error");
                 });
             }
         }
@@ -1293,13 +1303,20 @@
                 });
         }
 
-        // SAVE & PERSIST SYSTEM SETTINGS
+        //        // SAVE & PERSIST SYSTEM SETTINGS
         function saveSystemSettings() {
-            const apiUrl = document.getElementById("settingApiUrl").value.trim();
+            let apiUrl = document.getElementById("settingApiUrl").value.trim();
             const phone = document.getElementById("settingWhatsappPhone").value.trim();
             const callmebotKey = document.getElementById("settingCallmebotKey").value.trim();
             const notifyEmail = document.getElementById("settingNotifyEmail").checked;
             const notifyWhatsapp = document.getElementById("settingNotifyWhatsapp").checked;
+
+            // AUTOMATIC CLEANUP FOR GOOGLE USER SESSION REDIRECT (/u/0/ OR /u/1/)
+            if (apiUrl.includes("/macros/s/") && /\/u\/\d+\//.test(apiUrl)) {
+                apiUrl = apiUrl.replace(/\/u\/\d+\//, "/");
+                document.getElementById("settingApiUrl").value = apiUrl;
+                showToast("Sistem mengesan & membetulkan URL Google Session (/u/0/ dibuang).", "info");
+            }
 
             systemSettings = {
                 apiUrl,
@@ -1317,6 +1334,7 @@
                 isMockMode = false;
                 fetch(`${apiUrl}?action=saveSettings`, {
                     method: "POST",
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // MEMINTAS CORS PREFLIGHT OPTIONS
                     body: JSON.stringify({
                         userId: currentUser ? currentUser.userId : "USER001",
                         whatsappPhone: phone,
