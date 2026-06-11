@@ -1,636 +1,1361 @@
-/**
- * ==========================================
- * APAMS - BACKEND ENGINE (Google Apps Script)
- * ==========================================
- * Konfigurasi pangkalan data Google Sheets,
- * Folder Google Drive, Gmail, WhatsApp & PDF.
- */
-
-// Sila Ganti ID di bawah selepas menyunting fail ini di Apps Script
-const SPREADSHEET_ID = "1DWUKTAm71oyieMZJ7C6ejPCvnSGdGZaEDYhhARdtQl0";
-const DRIVE_FOLDER_ID = "1wQSUoXaVsE2EYuIwAi0kZJwIoG1koJQI";
-
-/**
- * Pengendali Request GET (API Read Operations)
- */
-function doGet(e) {
-  const result = handleRoute(e, "GET");
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * Pengendali Request POST (API Create, Update, Delete Operations)
- */
-function doPost(e) {
-  const result = handleRoute(e, "POST");
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * Pengendali Hala Laluan API (API Routing)
- */
-function handleRoute(e, method) {
-  try {
-    const params = e.parameter;
-    const action = params.action;
-    
-    let postData = null;
-    if (method === "POST" && e.postData && e.postData.contents) {
-      postData = JSON.parse(e.postData.contents);
-    }
-    
-    const db = SpreadsheetApp.openById(SPREADSHEET_ID);
-    
-    // API ACTIONS
-    switch (action) {
-      case "login":
-        return apiLogin(db, postData);
-        
-      case "listActivities":
-        return apiListActivities(db, params.userId);
-        
-      case "addActivity":
-        return apiAddActivity(db, postData);
-        
-      case "updateActivity":
-        return apiUpdateActivity(db, postData);
-        
-      case "deleteActivity":
-        return apiDeleteActivity(db, postData);
-        
-      case "uploadDocument":
-        return apiUploadDocument(db, postData);
-        
-      case "generatePDFReport":
-        return apiGeneratePDFReport(db, params.userId, params.category);
-        
-      case "getSettings":
-        return apiGetSettings(db, params.userId);
-        
-      case "saveSettings":
-        return apiSaveSettings(db, postData);
-        
-      default:
-        return { success: false, error: "Action '" + action + "' tidak disokong." };
-    }
-  } catch (error) {
-    logError("Routing", error.toString());
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * API: Log Masuk Pengguna
- */
-function apiLogin(db, data) {
-  if (!data || !data.email || !data.password) {
-    return { success: false, error: "E-mel dan kata laluan diperlukan." };
-  }
-  
-  const sheet = db.getSheetByName("Users");
-  const rows = sheet.getDataRange().getValues();
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][2].toString().toLowerCase() === data.email.toLowerCase() && rows[i][3].toString() === data.password) {
-      return {
-        success: true,
-        user: {
-          userId: rows[i][0],
-          name: rows[i][1],
-          email: rows[i][2]
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APAMS - Academic Portfolio & Activity Management</title>
+    <!-- Tailwind CSS & Inter Font -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ChartJS for rich visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PWA Manifest & Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-      };
-    }
-  }
-  return { success: false, error: "E-mel atau kata laluan salah." };
-}
-
-/**
- * API: Dapatkan Senarai Aktiviti Berdasarkan UserID
- */
-function apiListActivities(db, userId) {
-  if (!userId) return { success: false, error: "UserID diperlukan." };
-  
-  const sheet = db.getSheetByName("Activities");
-  const rows = sheet.getDataRange().getValues();
-  const activities = [];
-  
-  // Ambil data dokumen sokongan untuk dihubungkan
-  const docSheet = db.getSheetByName("Documents");
-  const docRows = docSheet.getDataRange().getValues();
-  const docMap = {};
-  
-  for (let j = 1; j < docRows.length; j++) {
-    const actId = docRows[j][1];
-    if (!docMap[actId]) docMap[actId] = [];
-    docMap[actId].push({
-      docId: docRows[j][0],
-      fileName: docRows[j][2],
-      driveUrl: docRows[j][3]
-    });
-  }
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString() === userId) {
-      const actId = rows[i][0].toString();
-      activities.push({
-        activityId: actId,
-        category: rows[i][2],
-        title: rows[i][3],
-        date: Utilities.formatDate(new Date(rows[i][4]), Session.getScriptTimeZone(), "yyyy-MM-dd"),
-        status: rows[i][5],
-        description: rows[i][6] || "",
-        hours: rows[i][7] || 0,
-        documents: docMap[actId] || []
-      });
-    }
-  }
-  
-  return { success: true, activities: activities };
-}
-
-/**
- * API: Tambah Aktiviti Baharu & Hantar Notifikasi
- */
-function apiAddActivity(db, data) {
-  if (!data || !data.userId || !data.category || !data.title || !data.date) {
-    return { success: false, error: "Parameter wajib tidak lengkap." };
-  }
-  
-  const sheet = db.getSheetByName("Activities");
-  const activityId = "ACT" + new Date().getTime();
-  
-  sheet.appendRow([
-    activityId,
-    data.userId,
-    data.category,
-    data.title,
-    data.date,
-    data.status || "Pending",
-    data.description || "",
-    data.hours || 0
-  ]);
-  
-  logAuditTrail(db, data.userId, "ADD_ACTIVITY", "Menambah aktiviti: " + data.title);
-  
-  // Hantar Notifikasi Automatik
-  triggerNotifications(db, data.userId, data.title, data.category, data.date);
-  
-  return { success: true, activityId: activityId, message: "Aktiviti berjaya disimpan!" };
-}
-
-/**
- * API: Kemas kini Aktiviti
- */
-function apiUpdateActivity(db, data) {
-  if (!data || !data.activityId || !data.userId) {
-    return { success: false, error: "ActivityID dan UserID diperlukan." };
-  }
-  
-  const sheet = db.getSheetByName("Activities");
-  const rows = sheet.getDataRange().getValues();
-  let rowIndex = -1;
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString() === data.activityId && rows[i][1].toString() === data.userId) {
-      rowIndex = i + 1;
-      break;
-    }
-  }
-  
-  if (rowIndex === -1) return { success: false, error: "Aktiviti tidak dijumpai." };
-  
-  sheet.getRange(rowIndex, 3).setValue(data.category);
-  sheet.getRange(rowIndex, 4).setValue(data.title);
-  sheet.getRange(rowIndex, 5).setValue(data.date);
-  sheet.getRange(rowIndex, 6).setValue(data.status);
-  sheet.getRange(rowIndex, 7).setValue(data.description || "");
-  sheet.getRange(rowIndex, 8).setValue(data.hours || 0);
-  
-  logAuditTrail(db, data.userId, "UPDATE_ACTIVITY", "Kemaskini aktiviti: " + data.title);
-  
-  return { success: true, message: "Aktiviti berjaya dikemas kini!" };
-}
-
-/**
- * API: Padam Aktiviti
- */
-function apiDeleteActivity(db, data) {
-  if (!data || !data.activityId || !data.userId) {
-    return { success: false, error: "ActivityID dan UserID diperlukan." };
-  }
-  
-  const sheet = db.getSheetByName("Activities");
-  const rows = sheet.getDataRange().getValues();
-  let rowIndex = -1;
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString() === data.activityId && rows[i][1].toString() === data.userId) {
-      rowIndex = i + 1;
-      break;
-    }
-  }
-  
-  if (rowIndex === -1) return { success: false, error: "Aktiviti tidak dijumpai." };
-  
-  sheet.deleteRow(rowIndex);
-  
-  // Padamkan juga rekod dokumen berkaitan dari sheet Documents
-  const docSheet = db.getSheetByName("Documents");
-  const docRows = docSheet.getDataRange().getValues();
-  for (let j = docRows.length - 1; j >= 1; j--) {
-    if (docRows[j][1].toString() === data.activityId) {
-      docSheet.deleteRow(j + 1);
-    }
-  }
-  
-  logAuditTrail(db, data.userId, "DELETE_ACTIVITY", "Memadam aktiviti ID: " + data.activityId);
-  return { success: true, message: "Aktiviti berjaya dipadamkan." };
-}
-
-/**
- * API: Muat Naik Fail & Simpan Ke Sub-folder Drive Kategori
- */
-function apiUploadDocument(db, data) {
-  if (!data || !data.userId || !data.activityId || !data.base64 || !data.fileName || !data.category) {
-    return { success: false, error: "Data muat naik fail tidak lengkap." };
-  }
-  
-  try {
-    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    let targetFolder;
-    
-    // Cari atau bina subfolder mengikut kategori portfolio akademik
-    const subfolders = parentFolder.getFoldersByName(data.category);
-    if (subfolders.hasNext()) {
-      targetFolder = subfolders.next();
-    } else {
-      targetFolder = parentFolder.createFolder(data.category);
-    }
-    
-    // Proses fail base64
-    const contentParts = data.base64.split(",");
-    const base64Data = contentParts.length > 1 ? contentParts[1] : contentParts[0];
-    const decodedBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), getMimeTypeByFileName(data.fileName), data.fileName);
-    
-    // Simpan ke Google Drive
-    const driveFile = targetFolder.createFile(decodedBlob);
-    driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW); // Set akses tontonan umum
-    
-    const driveUrl = driveFile.getUrl();
-    const docId = "DOC" + new Date().getTime();
-    
-    // Rekod ke pangkalan data Google Sheets
-    const docSheet = db.getSheetByName("Documents");
-    docSheet.appendRow([
-      docId,
-      data.activityId,
-      data.fileName,
-      driveUrl
-    ]);
-    
-    logAuditTrail(db, data.userId, "UPLOAD_DOCUMENT", "Muat naik fail: " + data.fileName);
-    
-    return { success: true, docId: docId, driveUrl: driveUrl, message: "Dokumen berjaya dimuat naik!" };
-  } catch (error) {
-    return { success: false, error: "Ralat muat naik: " + error.toString() };
-  }
-}
-
-/**
- * API: Dapatkan Konfigurasi Settings
- */
-function apiGetSettings(db, userId) {
-  if (!userId) return { success: false, error: "UserID diperlukan." };
-  
-  const sheet = db.getSheetByName("Settings");
-  const rows = sheet.getDataRange().getValues();
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString() === userId) {
-      return {
-        success: true,
-        settings: {
-          whatsappPhone: rows[i][1],
-          callmebotApiKey: rows[i][2],
-          notifyEmail: rows[i][3],
-          notifyWhatsapp: rows[i][4]
+        /* Custom scrollbar for desktop */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-      };
-    }
-  }
-  
-  // Jika tiada rekod, hantar default kosong
-  return {
-    success: true,
-    settings: { whatsappPhone: "", callmebotApiKey: "", notifyEmail: true, notifyWhatsapp: false }
-  };
-}
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden text-slate-800">
 
-/**
- * API: Simpan Konfigurasi Settings
- */
-function apiSaveSettings(db, data) {
-  if (!data || !data.userId) return { success: false, error: "UserID diperlukan." };
-  
-  const sheet = db.getSheetByName("Settings");
-  const rows = sheet.getDataRange().getValues();
-  let rowIndex = -1;
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0].toString() === data.userId) {
-      rowIndex = i + 1;
-      break;
-    }
-  }
-  
-  if (rowIndex !== -1) {
-    sheet.getRange(rowIndex, 2).setValue(data.whatsappPhone || "");
-    sheet.getRange(rowIndex, 3).setValue(data.callmebotApiKey || "");
-    sheet.getRange(rowIndex, 4).setValue(data.notifyEmail !== undefined ? data.notifyEmail : true);
-    sheet.getRange(rowIndex, 5).setValue(data.notifyWhatsapp !== undefined ? data.notifyWhatsapp : false);
-  } else {
-    sheet.appendRow([
-      data.userId,
-      data.whatsappPhone || "",
-      data.callmebotApiKey || "",
-      data.notifyEmail !== undefined ? data.notifyEmail : true,
-      data.notifyWhatsapp !== undefined ? data.notifyWhatsapp : false
-    ]);
-  }
-  
-  logAuditTrail(db, data.userId, "SAVE_SETTINGS", "Mengemas kini tetapan akaun.");
-  return { success: true, message: "Tetapan berjaya disimpan!" };
-}
+    <!-- NO-CONNECTION/MOCK STATE TOAST -->
+    <div id="mockToast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all duration-300 transform scale-0">
+        <i data-lucide="wifi-off" class="w-4 h-4"></i>
+        <span>Offline/Mock Mode Aktif (Data disimpan lokal).</span>
+    </div>
 
-/**
- * API: Jana Laporan PDF untuk Aktiviti Akademik
- */
-function apiGeneratePDFReport(db, userId, category) {
-  if (!userId) return { success: false, error: "UserID diperlukan." };
-  
-  try {
-    const userSheet = db.getSheetByName("Users");
-    const userRows = userSheet.getDataRange().getValues();
-    let userName = "Pensyarah";
-    let userEmail = "";
-    
-    for (let u = 1; u < userRows.length; u++) {
-      if (userRows[u][0].toString() === userId) {
-        userName = userRows[u][1];
-        userEmail = userRows[u][2];
-        break;
-      }
-    }
-    
-    const actSheet = db.getSheetByName("Activities");
-    const actRows = actSheet.getDataRange().getValues();
-    
-    // Cipta Dokumen Google Doc Baharu sebagai Templat
-    const docTitle = "Laporan Portfolio Akademik - " + userName;
-    const tempDoc = DocumentApp.create(docTitle);
-    const body = tempDoc.getBody();
-    
-    // Set Gaya Tajuk
-    body.appendParagraph("ACADEMIC PORTFOLIO & ACTIVITY REPORT")
-        .setHeading(DocumentApp.ParagraphHeading.TITLE)
-        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    <!-- MAIN ALERT TOAST SYSTEM -->
+    <div id="toastNotification" class="fixed bottom-20 md:bottom-6 right-4 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 max-w-sm">
+        <div id="toastIconContainer" class="p-1 rounded-full bg-indigo-500">
+            <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-white"></i>
+        </div>
+        <p id="toastMessage" class="text-xs font-medium"></p>
+    </div>
+
+    <!-- APP WRAPPER -->
+    <div class="flex flex-col md:flex-row h-full w-full overflow-hidden">
         
-    body.appendParagraph("Jana Tarikh: " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm"))
-        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    
-    body.appendHorizontalRule();
-    
-    // Informasi Pensyarah
-    body.appendParagraph("PROFIL AKADEMIK").setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph("Nama Pensyarah: " + userName);
-    body.appendParagraph("E-mel: " + userEmail);
-    body.appendParagraph("Skop Penilaian: " + (category && category !== "All" ? category : "Semua Kategori Portfolio"));
-    
-    body.appendHorizontalRule();
-    body.appendParagraph("SENARAI REKOD AKTIVITI").setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    
-    // Sediakan Data Jadual
-    const tableData = [["Kategori", "Tajuk Aktiviti", "Tarikh", "Status", "Jam/Kredit"]];
-    let totalHours = 0;
-    let recordsCount = 0;
-    
-    for (let i = 1; i < actRows.length; i++) {
-      if (actRows[i][1].toString() === userId) {
-        const actCategory = actRows[i][2];
-        
-        // Filter mengikut kategori jika diminta
-        if (category && category !== "All" && actCategory !== category) continue;
-        
-        const title = actRows[i][3];
-        const dateStr = Utilities.formatDate(new Date(actRows[i][4]), Session.getScriptTimeZone(), "dd-MM-yyyy");
-        const status = actRows[i][5];
-        const hours = actRows[i][7] || 0;
-        
-        tableData.push([actCategory, title, dateStr, status, hours.toString()]);
-        totalHours += Number(hours);
-        recordsCount++;
-      }
-    }
-    
-    if (recordsCount > 0) {
-      const table = body.appendTable(tableData);
-      table.setBorderColor("#cbd5e1");
-      table.setBorderWidth(1);
-      
-      // Format baris pertama (Header)
-      const headerRow = table.getRow(0);
-      for (let c = 0; c < headerRow.getNumCells(); c++) {
-        headerRow.getCell(c).setBackgroundColor("#1e293b").getParagraphs()[0].getChild(0).setBold(true).setForegroundColor("#ffffff");
-      }
-      
-      body.appendParagraph("\nJumlah Aktiviti: " + recordsCount);
-      body.appendParagraph("Jumlah Sumbangan Jam/Kredit: " + totalHours + " jam");
-    } else {
-      body.appendParagraph("Tiada aktiviti yang direkodkan bagi kategori ini.");
-    }
-    
-    tempDoc.saveAndClose();
-    
-    // Convert Google Doc to PDF
-    const docFile = DriveApp.getFileById(tempDoc.getId());
-    const pdfBlob = docFile.getAs(MimeType.PDF);
-    
-    // Simpan fail PDF ke Drive utama
-    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    const pdfFile = parentFolder.createFile(pdfBlob);
-    pdfFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    
-    // Padamkan fail Google Doc sementara
-    docFile.setTrashed(true);
-    
-    logAuditTrail(db, userId, "GENERATE_PDF", "Menjana laporan PDF bagi kategori: " + (category || "Semua"));
-    
-    return { success: true, pdfUrl: pdfFile.getUrl(), message: "Laporan PDF berjaya dijana!" };
-  } catch (error) {
-    return { success: false, error: "Gagal menjana PDF: " + error.toString() };
-  }
-}
+        <!-- SIDEBAR NAVIGATION (Desktop) -->
+        <aside id="sidebar" class="hidden md:flex flex-col w-64 bg-slate-900 text-white p-5 space-y-6 flex-shrink-0">
+            <div class="flex items-center gap-3 py-3 border-b border-slate-800">
+                <div class="p-2 bg-indigo-600 rounded-lg">
+                    <i data-lucide="graduation-cap" class="w-6 h-6 text-white animate-bounce"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight">APAMS</h1>
+                    <span class="text-[10px] text-slate-400 font-medium tracking-widest">PORTFOLIO</span>
+                </div>
+            </div>
 
-/**
- * PEMBANTU: Log Audit Trail (Untuk Jejak Aktiviti/Keselamatan)
- */
-function logAuditTrail(db, userId, action, details) {
-  try {
-    const sheet = db.getSheetByName("Logs");
-    sheet.appendRow([
-      new Date(),
-      userId,
-      action,
-      details
-    ]);
-  } catch (e) {
-    // Abaikan jika ralat log
-  }
-}
+            <!-- Profile Info -->
+            <div class="bg-slate-800/50 p-3 rounded-xl flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-lg" id="profileInitials">
+                    P
+                </div>
+                <div class="overflow-hidden">
+                    <h4 class="font-semibold text-xs truncate" id="profileName">Nama Pensyarah</h4>
+                    <p class="text-[10px] text-slate-400 truncate" id="profileEmail">email@pensyarah.com</p>
+                </div>
+            </div>
 
-/**
- * PEMBANTU: Log Ralat Sistem ke Sheets
- */
-function logError(context, message) {
-  try {
-    const db = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = db.getSheetByName("Logs");
-    sheet.appendRow([
-      new Date(),
-      "SYSTEM_ERROR",
-      context,
-      message
-    ]);
-  } catch (e) {
-    // Abaikan
-  }
-}
+            <nav class="flex-1 space-y-1">
+                <button onclick="switchView('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all hover:bg-slate-800 bg-indigo-600" data-view="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    Dashboard
+                </button>
+                <button onclick="switchView('activities')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="activities">
+                    <i data-lucide="list-todo" class="w-4 h-4"></i>
+                    Aktiviti Portfolio
+                </button>
+                <button onclick="switchView('reports')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="reports">
+                    <i data-lucide="file-bar-chart" class="w-4 h-4"></i>
+                    Jana Laporan
+                </button>
+                <button onclick="switchView('settings')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="settings">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    Tetapan API Cloud
+                </button>
+            </nav>
 
-/**
- * PEMBANTU: Penghantaran Notifikasi Gmail & WhatsApp
- */
-function triggerNotifications(db, userId, title, category, date) {
-  try {
-    // 1. Ambil maklumat User
-    const userSheet = db.getSheetByName("Users");
-    const userRows = userSheet.getDataRange().getValues();
-    let email = "";
-    let name = "";
-    
-    for (let u = 1; u < userRows.length; u++) {
-      if (userRows[u][0].toString() === userId) {
-        name = userRows[u][1];
-        email = userRows[u][2];
-        break;
-      }
-    }
-    
-    if (!email) return;
-    
-    // 2. Ambil tetapan notifikasi
-    const settingsSheet = db.getSheetByName("Settings");
-    const settingsRows = settingsSheet.getDataRange().getValues();
-    let notifyEmail = true;
-    let notifyWhatsapp = false;
-    let phone = "";
-    let apiKey = "";
-    
-    for (let s = 1; s < settingsRows.length; s++) {
-      if (settingsRows[s][0].toString() === userId) {
-        phone = settingsRows[s][1];
-        apiKey = settingsRows[s][2];
-        notifyEmail = settingsRows[s][3] === true || settingsRows[s][3] === "true";
-        notifyWhatsapp = settingsRows[s][4] === true || settingsRows[s][4] === "true";
-        break;
-      }
-    }
-    
-    const messageBody = "Salam Sejahtera " + name + ",\n\n" +
-                        "Aktiviti akademik baharu telah berjaya direkodkan ke dalam sistem APAMS anda.\n\n" +
-                        "📌 Tajuk: " + title + "\n" +
-                        "📌 Kategori: " + category + "\n" +
-                        "📌 Tarikh: " + date + "\n\n" +
-                        "Sila log masuk ke dashboard anda untuk memuat naik dokumen bukti sokongan.\n\n" +
-                        "Sistem APAMS Autogeneration.";
-    
-    // 3. Penghantaran Gmail
-    if (notifyEmail) {
-      GmailApp.sendEmail(email, "APAMS: Rekod Aktiviti Baharu Berjaya", messageBody);
-    }
-    
-    // 4. Penghantaran WhatsApp (Menggunakan CallMeBot API)
-    if (notifyWhatsapp && phone && apiKey) {
-      const waText = encodeURIComponent("🔔 *APAMS: Aktiviti Akademik Baharu*\n\nTajuk: " + title + "\nKategori: " + category + "\nTarikh: " + date + "\n\nSila muat naik bukti sokongan di portal.");
-      const waUrl = "https://api.callmebot.com/whatsapp.php?phone=" + phone + "&text=" + waText + "&apikey=" + apiKey;
-      
-      // Hantar permintaan HTTP secara tidak segerak (asynchronous request) ke CallMeBot API
-      UrlFetchApp.fetch(waUrl, { muteHttpExceptions: true });
-    }
-    
-  } catch (error) {
-    logError("Notification_Engine", error.toString());
-  }
-}
+            <button onclick="handleLogout()" class="flex items-center gap-3 px-4 py-3 text-xs font-semibold text-red-400 hover:bg-slate-800/50 rounded-lg transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Keluar Sistem
+            </button>
+        </aside>
 
-/**
- * PEMBANTU: Pengenalan MimeType Berdasarkan Hujung Fail
- */
-function getMimeTypeByFileName(fileName) {
-  const ext = fileName.split('.').pop().toLowerCase();
-  switch (ext) {
-    case 'pdf': return MimeType.PDF;
-    case 'png': return MimeType.PNG;
-    case 'jpg':
-    case 'jpeg': return MimeType.JPEG;
-    case 'doc':
-    case 'docx': return MimeType.MICROSOFT_WORD;
-    case 'xls':
-    case 'xlsx': return MimeType.MICROSOFT_EXCEL;
-    default: return 'application/octet-stream';
-  }
-}
+        <!-- CONTAINER KANDUNGAN UTAMA -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
+            <!-- TOP BAR (Mobile Header & Profile) -->
+            <header class="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shadow-sm flex-shrink-0 z-30">
+                <div class="flex items-center gap-3">
+                    <div class="md:hidden p-2 rounded-lg bg-indigo-50 text-indigo-600">
+                        <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                    </div>
+                    <h2 id="currentViewTitle" class="text-sm font-bold text-slate-800">Dashboard Utama</h2>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- Synced status -->
+                    <span id="syncIndicator" class="text-[10px] bg-emerald-50 text-emerald-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                        Mock Database
+                    </span>
+                </div>
+            </header>
 
-/**
- * FUNGSI AUTO-SETUP: Jalankan ini sekali untuk membina database lengkap
- */
-function setupDatabase() {
-  const db = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
-  const sheets = [
-    { name: "Users", headers: ["UserID", "Name", "Email", "Password"] },
-    { name: "Activities", headers: ["ActivityID", "UserID", "Category", "Title", "Date", "Status", "Description", "Hours"] },
-    { name: "Documents", headers: ["DocID", "ActivityID", "FileName", "DriveURL"] },
-    { name: "Logs", headers: ["Timestamp", "UserID", "Action", "Details"] },
-    { name: "Settings", headers: ["UserID", "WhatsappPhone", "CallmebotApiKey", "NotifyEmail", "NotifyWhatsapp"] }
-  ];
-  
-  sheets.forEach(function(s) {
-    let sheet = db.getSheetByName(s.name);
-    if (!sheet) {
-      sheet = db.insertSheet(s.name);
-      sheet.appendRow(s.headers);
-      
-      // Cantikkan baris tajuk
-      sheet.getRange(1, 1, 1, s.headers.length)
-        .setBackground("#1e293b")
-        .setFontColor("#ffffff")
-        .setFontWeight("bold");
-    }
-  });
-  
-  // Wujudkan subfolder utama di Google Drive untuk portfolio akademik
-  const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  const categories = ["Teaching", "Research", "Publication", "Consultation", "Administration", "Community Service"];
-  
-  categories.forEach(function(cat) {
-    const check = parentFolder.getFoldersByName(cat);
-    if (!check.hasNext()) {
-      parentFolder.createFolder(cat);
-    }
-  });
-  
-  Logger.log("Pangkalan data APAMS berjaya dikonfigurasi sepenuhnya!");
-}
+            <!-- VIEW CONTENT CONTAINER -->
+            <div id="viewContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+
+                <!-- 1. LOGIN VIEW -->
+                <div id="loginView" class="hidden min-h-full flex flex-col items-center justify-center p-4">
+                    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
+                        <div class="flex flex-col items-center text-center mb-8">
+                            <div class="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-200 mb-4">
+                                <i data-lucide="graduation-cap" class="w-10 h-10"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-slate-800">Sistem Portfolio Akademik</h2>
+                            <p class="text-xs text-slate-400 mt-1">Urus Pengajaran, Penyelidikan & Notifikasi PWA</p>
+                        </div>
+
+                        <form id="loginForm" onsubmit="executeLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Alamat E-mel</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i data-lucide="mail" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="email" id="loginEmail" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="nama@email.com">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Kata Laluan</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="password" id="loginPassword" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="••••••••">
+                                </div>
+                            </div>
+                            
+                            <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100/50">
+                                <p class="text-[10px] text-indigo-700 font-medium">
+                                    💡 <strong>Demo Credential:</strong><br>
+                                    E-mel: <code>ahmad@email.com</code> | Laluan: <code>password123</code>
+                                </p>
+                            </div>
+
+                            <button type="submit" id="loginBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition-all text-sm flex items-center justify-center gap-2">
+                                <i data-lucide="log-in" class="w-4 h-4"></i>
+                                Log Masuk Portal
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 2. DASHBOARD VIEW -->
+                <div id="dashboardView" class="hidden space-y-6">
+                    <!-- Welcome Banner -->
+                    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                        <div class="relative z-10 space-y-2">
+                            <span class="bg-indigo-500/30 text-indigo-200 font-bold px-3 py-1 rounded-full text-[10px] uppercase tracking-wider">APAMS Dashboard</span>
+                            <h2 class="text-lg md:text-xl font-bold leading-tight">Selamat Datang, <span id="dashWelcomeName" class="text-indigo-300">Profesor</span></h2>
+                            <p class="text-xs text-slate-300 max-w-xl">Urus, pantau dan jana laporan aktiviti akademik seperti mengajar, membuat penyelidikan serta perkhidmatan masyarakat dengan mudah di dalam satu platform.</p>
+                        </div>
+                        <i data-lucide="sparkles" class="absolute right-6 bottom-4 w-28 h-28 text-white/5 pointer-events-none"></i>
+                    </div>
+
+                    <!-- KPI Statistics Grid -->
+                    <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-emerald-600 tracking-wider">TEACHING</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statTeaching">0</h3>
+                            <span class="text-[9px] text-slate-400">Jam Pengajaran</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-indigo-600 tracking-wider">RESEARCH</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statResearch">0</h3>
+                            <span class="text-[9px] text-slate-400">Penyelidikan</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-amber-600 tracking-wider">PUBLICATION</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statPublication">0</h3>
+                            <span class="text-[9px] text-slate-400">Penerbitan Fail</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-rose-600 tracking-wider">CONSULT</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statConsultation">0</h3>
+                            <span class="text-[9px] text-slate-400">Rundingan</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-cyan-600 tracking-wider">ADMIN</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statAdministration">0</h3>
+                            <span class="text-[9px] text-slate-400">Pentadbiran</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <span class="text-[10px] font-bold text-purple-600 tracking-wider">COMMUNITY</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statCommunity">0</h3>
+                            <span class="text-[9px] text-slate-400">Khidmat Masyarakat</span>
+                        </div>
+                    </div>
+
+                    <!-- Graphic Analytics & Recent Activity -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- ChartJS Card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wide">Analisis Agihan Jam Sumbangan Kategori</h4>
+                                <span class="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded">KPI Chart</span>
+                            </div>
+                            <div class="flex-1 min-h-[250px] relative">
+                                <canvas id="kpiChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activities List -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                            <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wide mb-4">Aktiviti Terbaharu</h4>
+                            <div class="flex-1 space-y-3 overflow-y-auto max-h-[250px]" id="dashRecentList">
+                                <!-- Dynamic List -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. ACTIVITIES VIEW (CRUD) -->
+                <div id="activitiesView" class="hidden space-y-6">
+                    <!-- Action Headers -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                        <!-- Filter & Search -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="filterCategory" onchange="loadActivitiesData()" class="border border-slate-200 text-xs rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="All">Semua Kategori</option>
+                                <option value="Teaching">Teaching</option>
+                                <option value="Research">Research</option>
+                                <option value="Publication">Publication</option>
+                                <option value="Consultation">Consultation</option>
+                                <option value="Administration">Administration</option>
+                                <option value="Community Service">Community Service</option>
+                            </select>
+                            <input type="text" id="searchKeyword" onkeyup="loadActivitiesData()" placeholder="Cari aktiviti..." class="border border-slate-200 text-xs rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44">
+                        </div>
+                        
+                        <button onclick="openActivityModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Tambah Aktiviti
+                        </button>
+                    </div>
+
+                    <!-- Responsive Activities Cards/Table -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50/75 border-b border-slate-200 text-slate-400 text-[10px] font-bold tracking-wider uppercase">
+                                        <th class="px-6 py-4">Kategori</th>
+                                        <th class="px-6 py-4">Aktiviti</th>
+                                        <th class="px-6 py-4">Tarikh</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4">Sumbangan (Jam)</th>
+                                        <th class="px-6 py-4">Bukti Fail</th>
+                                        <th class="px-6 py-4 text-right">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activitiesTableBody" class="divide-y divide-slate-100 text-xs">
+                                    <!-- Dynamic rows will populate here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. REPORTS VIEW -->
+                <div id="reportsView" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto space-y-4">
+                        <h3 class="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+                            <i data-lucide="printer" class="w-5 h-5 text-indigo-600"></i>
+                            Jana Laporan Portfolio PDF
+                        </h3>
+                        <p class="text-xs text-slate-400">Jana fail laporan PDF yang teratur terus dari simpanan Google Drive anda untuk digunakan sebagai bukti bagi tujuan kenaikan pangkat (promotion) atau penilaian prestasi tahunan.</p>
+                        
+                        <div class="space-y-4 pt-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Skop Kategori</label>
+                                <select id="reportCategory" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <option value="All">Semua Aktiviti Portfolio</option>
+                                    <option value="Teaching">Teaching Report Only</option>
+                                    <option value="Research">Research Report Only</option>
+                                    <option value="Publication">Publication Report Only</option>
+                                    <option value="Promotion">Khas Kenaikan Pangkat (Semua)</option>
+                                </select>
+                            </div>
+
+                            <button onclick="executePDFGeneration()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs flex items-center justify-center gap-2">
+                                <i data-lucide="file-pdf" class="w-4 h-4"></i>
+                                Jana & Muat Turun PDF Sekarang
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. SETTINGS VIEW -->
+                <div id="settingsView" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto space-y-6">
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                                <i data-lucide="cloud" class="w-5 h-5 text-indigo-600"></i>
+                                Konfigurasi Integrasi Cloud API
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Hubungkan frontend dengan pangkalan data Google Sheet dan storan fail Drive menggunakan Apps Script Web App URL.</p>
+                        </div>
+
+                        <div class="space-y-4 border-t border-slate-100 pt-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Google Apps Script API URL</label>
+                                <input type="text" id="settingApiUrl" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="https://script.google.com/macros/s/.../exec">
+                            </div>
+
+                            <div class="border-t border-slate-100 pt-4">
+                                <h4 class="font-bold text-xs text-slate-800 mb-3 flex items-center gap-2">
+                                    <i data-lucide="message-square" class="w-4 h-4 text-emerald-600"></i>
+                                    Tetapan Notifikasi WhatsApp (CallMeBot)
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Nombor WhatsApp (Contoh: +60123456789)</label>
+                                        <input type="text" id="settingWhatsappPhone" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="+601XXXXXXXX">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">CallMeBot API Key</label>
+                                        <input type="password" id="settingCallmebotKey" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="API Key">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-100 pt-4 space-y-3">
+                                <h4 class="font-bold text-xs text-slate-800">Pilihan Saluran Notifikasi</h4>
+                                <div class="flex items-center gap-6">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="settingNotifyEmail" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="text-xs text-slate-600 font-medium">Melalui Gmail</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="settingNotifyWhatsapp" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="text-xs text-slate-600 font-medium">Melalui WhatsApp</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button onclick="saveSystemSettings()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all text-xs flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                Simpan Konfigurasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- BOTTOM NAVIGATION (Mobile UI only) -->
+            <nav class="md:hidden flex items-center justify-around py-3 bg-white border-t border-slate-200 flex-shrink-0 z-30">
+                <button onclick="switchView('dashboard')" class="mobile-nav-btn text-indigo-600 flex flex-col items-center gap-1" data-view="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Dashboard</span>
+                </button>
+                <button onclick="switchView('activities')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="activities">
+                    <i data-lucide="list-todo" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Aktiviti</span>
+                </button>
+                <button onclick="switchView('reports')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="reports">
+                    <i data-lucide="file-bar-chart" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Laporan</span>
+                </button>
+                <button onclick="switchView('settings')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="settings">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">API Tetapan</span>
+                </button>
+            </nav>
+        </main>
+    </div>
+
+    <!-- 6. CRUD DIALOG MODAL (ADD & UPDATE VIEW) -->
+    <div id="activityModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="modalTitle" class="font-bold text-sm text-slate-800">Tambah Aktiviti Akademik</h3>
+                <button onclick="closeActivityModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <!-- Modal Form -->
+            <form id="activityForm" onsubmit="saveActivity(event)" class="p-6 space-y-4">
+                <input type="hidden" id="formActivityId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Kategori Portfolio</label>
+                        <select id="formCategory" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="Teaching">Teaching</option>
+                            <option value="Research">Research</option>
+                            <option value="Publication">Publication</option>
+                            <option value="Consultation">Consultation</option>
+                            <option value="Administration">Administration</option>
+                            <option value="Community Service">Community Service</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Sumbangan Jam / Kredit</label>
+                        <input type="number" id="formHours" required min="1" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: 12">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Tajuk / Nama Aktiviti</label>
+                    <input type="text" id="formTitle" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: Kuliah EE102 Semester 1">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Tarikh Dilaksanakan</label>
+                        <input type="date" id="formDate" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Status Aktiviti</label>
+                        <select id="formStatus" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="Completed">Selesai (Completed)</option>
+                            <option value="In Progress">Sedang Berjalan (In Progress)</option>
+                            <option value="Pending">Tertangguh (Pending)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Penerangan Ringkas (Opsional)</label>
+                    <textarea id="formDescription" rows="2" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Keterangan berkaitan sumbangan aktiviti..."></textarea>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeActivityModal()" class="px-4 py-2.5 border border-slate-200 text-slate-500 rounded-xl text-xs hover:bg-slate-50 font-medium">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        Simpan Aktiviti
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 7. UPLOAD FILE DIALOG MODAL -->
+    <div id="uploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-xs text-slate-800">Muat Naik Bukti Google Drive</h3>
+                <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-all">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <form id="uploadForm" onsubmit="executeDocumentUpload(event)" class="p-6 space-y-4">
+                <input type="hidden" id="uploadActivityId">
+                <input type="hidden" id="uploadCategory">
+                
+                <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-2 cursor-pointer hover:border-indigo-400 hover:bg-slate-50/50 transition-all relative">
+                    <input type="file" id="uploadFileElement" required onchange="handleFileSelected(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div id="fileDisplayContainer" class="space-y-1">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-500 mx-auto"></i>
+                        <h4 class="text-xs font-bold text-slate-700">Pilih Dokumen Bukti</h4>
+                        <p class="text-[10px] text-slate-400">PDF, PNG, JPG atau Word (Maks 1MB)</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 border border-slate-200 text-slate-500 rounded-xl text-xs hover:bg-slate-50 font-medium">Batal</button>
+                    <button type="submit" id="btnUploadSubmit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
+                        <i data-lucide="cloud-lightning" class="w-4 h-4"></i>
+                        Mula Muat Naik
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // MOCK DATABASE & LOCALSTORAGE FALLBACK
+        const DEFAULT_MOCK_ACTIVITIES = [
+            { activityId: "ACT001", category: "Teaching", title: "Silibus Kuliah Kejuruteraan Perisian", date: "2026-06-01", status: "Completed", description: "Mengendalikan kelas kuliah Tahun 2, seramai 45 pelajar.", hours: 14, documents: [] },
+            { activityId: "ACT002", category: "Research", title: "Research Grant FRGS: Smart IoT Agriculture", date: "2026-06-05", status: "In Progress", description: "Penyelidikan algoritma IoT berasaskan AI di kebun komuniti.", hours: 35, documents: [] },
+            { activityId: "ACT003", category: "Publication", title: "Journal IEEE: Machine Learning Performance", date: "2026-06-08", status: "Pending", description: "Menunggu semakan pengulas jurnal antarabangsa Q1.", hours: 40, documents: [] },
+            { activityId: "ACT004", category: "Community Service", title: "Ceramah Kesedaran Siber Sekolah Menengah", date: "2026-06-10", status: "Completed", description: "Mengendalikan perkongsian keselamatan maklumat bersama 200 pelajar.", hours: 6, documents: [] }
+        ];
+
+        // GLOBAL STATES
+        let currentUser = null;
+        let localActivities = [];
+        let systemSettings = {
+            apiUrl: "",
+            whatsappPhone: "",
+            callmebotApiKey: "",
+            notifyEmail: true,
+            notifyWhatsapp: false
+        };
+        let isMockMode = true;
+        let selectedFileBase64 = "";
+        let selectedFileName = "";
+        let kpiChartInstance = null;
+
+        // ON RUNTIME START
+        window.addEventListener('load', () => {
+            // Register service worker for Progressive Web App features
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log("SW Register Fail: ", err));
+            }
+            
+            // Check Local Storage
+            const savedUser = localStorage.getItem("apams_user");
+            const savedSettings = localStorage.getItem("apams_settings");
+            const savedLocalActivities = localStorage.getItem("apams_mock_activities");
+
+            if (savedSettings) {
+                systemSettings = JSON.parse(savedSettings);
+                document.getElementById("settingApiUrl").value = systemSettings.apiUrl || "";
+                document.getElementById("settingWhatsappPhone").value = systemSettings.whatsappPhone || "";
+                document.getElementById("settingCallmebotKey").value = systemSettings.callmebotApiKey || "";
+                document.getElementById("settingNotifyEmail").checked = systemSettings.notifyEmail;
+                document.getElementById("settingNotifyWhatsapp").checked = systemSettings.notifyWhatsapp;
+            }
+
+            if (savedLocalActivities) {
+                localActivities = JSON.parse(savedLocalActivities);
+            } else {
+                localActivities = [...DEFAULT_MOCK_ACTIVITIES];
+                localStorage.setItem("apams_mock_activities", JSON.stringify(localActivities));
+            }
+
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                applyUserSettings();
+                switchView('dashboard');
+            } else {
+                switchView('login');
+            }
+
+            // Initialize Lucide icons
+            lucide.createIcons();
+        });
+
+        // VIEW NAVIGATION ENGINE
+        function switchView(viewId) {
+            // Hide all views
+            const views = ["loginView", "dashboardView", "activitiesView", "reportsView", "settingsView"];
+            views.forEach(v => document.getElementById(v).classList.add("hidden"));
+
+            // Deselect all menu items
+            document.querySelectorAll(".nav-btn").forEach(btn => {
+                btn.classList.remove("bg-indigo-600", "text-white");
+                btn.classList.add("text-slate-400");
+            });
+            document.querySelectorAll(".mobile-nav-btn").forEach(btn => {
+                btn.classList.remove("text-indigo-600");
+                btn.classList.add("text-slate-400");
+            });
+
+            // Handle sidebar layout visibility
+            const sidebar = document.getElementById("sidebar");
+            const topHeader = document.querySelector("header");
+            const botNav = document.querySelector("nav.md\\:hidden");
+
+            if (viewId === "login") {
+                document.getElementById("loginView").classList.remove("hidden");
+                sidebar.classList.add("hidden");
+                topHeader.classList.add("hidden");
+                botNav.classList.add("hidden");
+            } else {
+                sidebar.classList.remove("hidden");
+                sidebar.classList.add("md:flex");
+                topHeader.classList.remove("hidden");
+                botNav.classList.remove("hidden");
+
+                // Show Selected View
+                const viewElement = document.getElementById(viewId + "View");
+                if (viewElement) viewElement.classList.remove("hidden");
+
+                // Highlight active link in sidebar and mobile nav bar
+                document.querySelectorAll(`[data-view="${viewId}"]`).forEach(btn => {
+                    if (btn.classList.contains("nav-btn")) {
+                        btn.classList.add("bg-indigo-600", "text-white");
+                        btn.classList.remove("text-slate-400");
+                    } else {
+                        btn.classList.add("text-indigo-600");
+                        btn.classList.remove("text-slate-400");
+                    }
+                });
+
+                // Set Title
+                const titles = {
+                    dashboard: "Dashboard Portfolio Utama",
+                    activities: "Senarai Rekod Aktiviti Portfolio",
+                    reports: "Jana & Cetak PDF Portfolio",
+                    settings: "Integrasi API Awan & Tetapan"
+                };
+                document.getElementById("currentViewTitle").innerText = titles[viewId] || "Halaman";
+
+                // Refresh View Specific Data
+                if (viewId === "dashboard") {
+                    refreshDashboardData();
+                } else if (viewId === "activities") {
+                    loadActivitiesData();
+                }
+            }
+            
+            lucide.createIcons();
+        }
+
+        // EXECUTE AUTH LOGIN
+        function executeLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value.trim();
+
+            showLoading(true, "Mengesahkan kata laluan...");
+
+            // Jika API disahkan
+            if (systemSettings.apiUrl) {
+                isMockMode = false;
+                fetch(`${systemSettings.apiUrl}?action=login`, {
+                    method: "POST",
+                    body: JSON.stringify({ email, password })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        currentUser = data.user;
+                        localStorage.setItem("apams_user", JSON.stringify(currentUser));
+                        applyUserSettings();
+                        switchView('dashboard');
+                        showToast("Log masuk cloud berjaya!", "success");
+                    } else {
+                        showToast(data.error || "Log masuk gagal.", "error");
+                    }
+                })
+                .catch(err => {
+                    showLoading(false);
+                    showToast("Sambungan API gagal. Menggunakan fail laluan lokal (Mock Mode).", "warning");
+                    executeLocalMockLogin(email, password);
+                });
+            } else {
+                executeLocalMockLogin(email, password);
+            }
+        }
+
+        function executeLocalMockLogin(email, password) {
+            showLoading(false);
+            if (email === "ahmad@email.com" && password === "password123") {
+                currentUser = {
+                    userId: "USER001",
+                    name: "Prof. Dr. Ahmad",
+                    email: "ahmad@email.com"
+                };
+                localStorage.setItem("apams_user", JSON.stringify(currentUser));
+                applyUserSettings();
+                switchView('dashboard');
+                showToast("Log masuk Offline (Mock Mode) Berjaya!", "success");
+            } else {
+                showToast("ID atau kata laluan salah.", "error");
+            }
+        }
+
+        // APPLY LOGGED IN USER ATTRIBUTES
+        function applyUserSettings() {
+            if (!currentUser) return;
+
+            document.getElementById("profileName").innerText = currentUser.name;
+            document.getElementById("profileEmail").innerText = currentUser.email;
+            document.getElementById("dashWelcomeName").innerText = currentUser.name;
+            document.getElementById("profileInitials").innerText = currentUser.name.split(" ").map(n => n[0]).join("").substring(0,2).toUpperCase();
+
+            // Setup Sync Status Indicator
+            const indicator = document.getElementById("syncIndicator");
+            if (systemSettings.apiUrl) {
+                isMockMode = false;
+                indicator.innerText = "Cloud Sync Live";
+                indicator.className = "text-[10px] bg-emerald-50 text-emerald-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5";
+                document.getElementById("mockToast").classList.add("scale-0");
+            } else {
+                isMockMode = true;
+                indicator.innerText = "Mock Offline Data";
+                indicator.className = "text-[10px] bg-amber-50 text-amber-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5";
+                document.getElementById("mockToast").classList.remove("scale-0");
+                setTimeout(() => {
+                    document.getElementById("mockToast").classList.add("scale-0");
+                }, 5000);
+            }
+        }
+
+        // LOGOUT LOGIC
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem("apams_user");
+            switchView('login');
+            showToast("Sesi log keluar berjaya.", "info");
+        }
+
+        // REFRESH DASHBOARD STATISTICS & GRAPHICS
+        function refreshDashboardData() {
+            if (!currentUser) return;
+
+            if (isMockMode) {
+                renderDashboardMetrics(localActivities);
+            } else {
+                fetch(`${systemSettings.apiUrl}?action=listActivities&userId=${currentUser.userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            renderDashboardMetrics(data.activities);
+                        } else {
+                            showToast("Gagal memuat turun aktiviti awan.", "error");
+                        }
+                    })
+                    .catch(() => showToast("Masalah rangkaian cloud API.", "error"));
+            }
+        }
+
+        function renderDashboardMetrics(activitiesList) {
+            // Count total sums per category
+            const categories = ["Teaching", "Research", "Publication", "Consultation", "Administration", "Community Service"];
+            const categorySums = { Teaching: 0, Research: 0, Publication: 0, Consultation: 0, Administration: 0, "Community Service": 0 };
+            
+            activitiesList.forEach(act => {
+                const cat = act.category;
+                if (categorySums[cat] !== undefined) {
+                    categorySums[cat] += Number(act.hours || 0);
+                }
+            });
+
+            // Update UI Statistics
+            document.getElementById("statTeaching").innerText = categorySums["Teaching"];
+            document.getElementById("statResearch").innerText = categorySums["Research"];
+            document.getElementById("statPublication").innerText = categorySums["Publication"];
+            document.getElementById("statConsultation").innerText = categorySums["Consultation"];
+            document.getElementById("statAdministration").innerText = categorySums["Administration"];
+            document.getElementById("statCommunity").innerText = categorySums["Community Service"];
+
+            // Render ChartJS
+            renderKPIChart(Object.values(categorySums));
+
+            // Render Recent Actions List
+            const recentContainer = document.getElementById("dashRecentList");
+            recentContainer.innerHTML = "";
+            
+            const sorted = [...activitiesList].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (sorted.length === 0) {
+                recentContainer.innerHTML = `
+                    <div class="text-center py-6">
+                        <p class="text-xs text-slate-400">Tiada rekod disimpan setakat ini.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            sorted.forEach(act => {
+                const colors = {
+                    Teaching: "bg-emerald-500",
+                    Research: "bg-indigo-500",
+                    Publication: "bg-amber-500",
+                    Consultation: "bg-rose-500",
+                    Administration: "bg-cyan-500",
+                    "Community Service": "bg-purple-500"
+                };
+                const color = colors[act.category] || "bg-slate-500";
+
+                const div = document.createElement("div");
+                div.className = "flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100/70 transition-all border border-slate-100";
+                div.innerHTML = `
+                    <div class="w-2.5 h-2.5 rounded-full ${color} mt-1.5 flex-shrink-0"></div>
+                    <div class="flex-1 overflow-hidden">
+                        <h5 class="font-semibold text-xs text-slate-800 truncate">${act.title}</h5>
+                        <div class="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                            <span class="font-medium text-slate-500">${act.category}</span>
+                            <span>•</span>
+                            <span>${act.date}</span>
+                            <span>•</span>
+                            <span class="bg-indigo-50 text-indigo-600 px-1.5 py-0.2 rounded font-bold">${act.hours} Jam</span>
+                        </div>
+                    </div>
+                `;
+                recentContainer.appendChild(div);
+            });
+        }
+
+        // RENDER PIE/DOUGHNUT CHART (CHART.JS)
+        function renderKPIChart(dataValues) {
+            const ctx = document.getElementById('kpiChart').getContext('2d');
+            
+            if (kpiChartInstance) {
+                kpiChartInstance.destroy();
+            }
+
+            kpiChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Teaching', 'Research', 'Publication', 'Consulting', 'Admin', 'Community'],
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: [
+                            '#10b981', // Teaching - emerald
+                            '#6366f1', // Research - indigo
+                            '#f59e0b', // Publication - amber
+                            '#f43f5e', // Consultation - rose
+                            '#06b6d4', // Administration - cyan
+                            '#a855f7'  // Community Service - purple
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 10, family: 'Inter' },
+                                boxWidth: 12
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        // LOAD ACTIVITIES DATA FOR DATATABLE
+        function loadActivitiesData() {
+            if (!currentUser) return;
+
+            const categoryFilter = document.getElementById("filterCategory").value;
+            const searchKeyword = document.getElementById("searchKeyword").value.toLowerCase();
+
+            if (isMockMode) {
+                filterAndDisplayActivities(localActivities, categoryFilter, searchKeyword);
+            } else {
+                fetch(`${systemSettings.apiUrl}?action=listActivities&userId=${currentUser.userId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            filterAndDisplayActivities(data.activities, categoryFilter, searchKeyword);
+                        } else {
+                            showToast("Gagal memanggil rekod cloud.", "error");
+                        }
+                    })
+                    .catch(() => showToast("Sistem offline atau ralat Web App URL.", "error"));
+            }
+        }
+
+        function filterAndDisplayActivities(activities, category, keyword) {
+            const tableBody = document.getElementById("activitiesTableBody");
+            tableBody.innerHTML = "";
+
+            const filtered = activities.filter(act => {
+                const matchesCategory = (category === "All" || act.category === category);
+                const matchesKeyword = (act.title.toLowerCase().includes(keyword) || (act.description && act.description.toLowerCase().includes(keyword)));
+                return matchesCategory && matchesKeyword;
+            });
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-slate-400">
+                            <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            Tiada rekod dijumpai. Klik 'Tambah Aktiviti' di atas.
+                        </td>
+                    </tr>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            filtered.forEach(act => {
+                // Documents display block
+                let docSection = `<span class="text-slate-400 text-[10px]">Tiada bukti</span>`;
+                if (act.documents && act.documents.length > 0) {
+                    docSection = act.documents.map(d => `
+                        <a href="${d.driveUrl}" target="_blank" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold truncate max-w-[120px] bg-indigo-50 px-2 py-0.5 rounded transition-all">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                            <span>${d.fileName.substring(0,10)}...</span>
+                        </a>
+                    `).join("");
+                }
+
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50/70 transition-all border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-slate-600">${act.category}</td>
+                    <td class="px-6 py-4">
+                        <span class="font-semibold text-slate-800 block">${act.title}</span>
+                        <span class="text-[10px] text-slate-400 truncate block max-w-xs">${act.description || 'Tiada huraian'}</span>
+                    </td>
+                    <td class="px-6 py-4 text-slate-500 whitespace-nowrap">${act.date}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 rounded-full text-[9px] font-bold ${getStatusClass(act.status)}">
+                            ${act.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-extrabold text-slate-700 text-center">${act.hours} Jam</td>
+                    <td class="px-6 py-4">${docSection}</td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap space-x-1">
+                        <button onclick="openUploadModal('${act.activityId}', '${act.category}')" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center gap-1 font-bold text-[10px]" title="Upload Bukti">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="editActivity('${encodeURIComponent(JSON.stringify(act))}')" class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-flex" title="Edit">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteActivity('${act.activityId}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all inline-flex" title="Padam">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+                case 'In Progress': return 'bg-sky-50 text-sky-700 border border-sky-100';
+                default: return 'bg-amber-50 text-amber-700 border border-amber-100';
+            }
+        }
+
+        // DIALOG: ACTIVITY CREATION/EDITION MODAL
+        function openActivityModal(actObj = null) {
+            const modal = document.getElementById("activityModal");
+            const form = document.getElementById("activityForm");
+            
+            form.reset();
+            document.getElementById("formActivityId").value = "";
+
+            if (actObj) {
+                document.getElementById("modalTitle").innerText = "Kemaskini Rekod Portfolio";
+                document.getElementById("formActivityId").value = actObj.activityId;
+                document.getElementById("formCategory").value = actObj.category;
+                document.getElementById("formTitle").value = actObj.title;
+                document.getElementById("formDate").value = actObj.date;
+                document.getElementById("formStatus").value = actObj.status;
+                document.getElementById("formDescription").value = actObj.description || "";
+                document.getElementById("formHours").value = actObj.hours || 0;
+            } else {
+                document.getElementById("modalTitle").innerText = "Tambah Aktiviti Akademik";
+                document.getElementById("formDate").value = new Date().toISOString().split('T')[0];
+            }
+
+            modal.classList.remove("pointer-events-none", "opacity-0");
+            modal.firstElementChild.classList.remove("scale-95");
+            lucide.createIcons();
+        }
+
+        function closeActivityModal() {
+            const modal = document.getElementById("activityModal");
+            modal.classList.add("pointer-events-none", "opacity-0");
+            modal.firstElementChild.classList.add("scale-95");
+        }
+
+        // SAVE OR UPDATE ACTIVITY HANDLER
+        function saveActivity(event) {
+            event.preventDefault();
+
+            const activityId = document.getElementById("formActivityId").value;
+            const category = document.getElementById("formCategory").value;
+            const title = document.getElementById("formTitle").value.trim();
+            const date = document.getElementById("formDate").value;
+            const status = document.getElementById("formStatus").value;
+            const description = document.getElementById("formDescription").value.trim();
+            const hours = Number(document.getElementById("formHours").value);
+
+            const payload = {
+                userId: currentUser.userId,
+                activityId,
+                category,
+                title,
+                date,
+                status,
+                description,
+                hours
+            };
+
+            showLoading(true, "Menyimpan data...");
+
+            if (isMockMode) {
+                // OFFLINE SAVE TO LOCAL STORAGE
+                if (activityId) {
+                    // Update
+                    const idx = localActivities.findIndex(a => a.activityId === activityId);
+                    if (idx !== -1) {
+                        localActivities[idx] = { ...localActivities[idx], ...payload };
+                    }
+                } else {
+                    // Create New
+                    payload.activityId = "ACT" + new Date().getTime();
+                    payload.documents = [];
+                    localActivities.push(payload);
+                }
+                localStorage.setItem("apams_mock_activities", JSON.stringify(localActivities));
+                
+                setTimeout(() => {
+                    showLoading(false);
+                    closeActivityModal();
+                    loadActivitiesData();
+                    showToast("Simpan data lokal berjaya!", "success");
+                }, 600);
+            } else {
+                // CLOUD API SAVE
+                const action = activityId ? "updateActivity" : "addActivity";
+                fetch(`${systemSettings.apiUrl}?action=${action}`, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        closeActivityModal();
+                        loadActivitiesData();
+                        showToast(data.message, "success");
+                    } else {
+                        showToast(data.error, "error");
+                    }
+                })
+                .catch(() => {
+                    showLoading(false);
+                    showToast("Sambungan awan ralat.", "error");
+                });
+            }
+        }
+
+        // EDIT TRIGGER
+        function editActivity(encodedStr) {
+            const act = JSON.parse(decodeURIComponent(encodedStr));
+            openActivityModal(act);
+        }
+
+        // DELETE ACTIVITY
+        function deleteActivity(activityId) {
+            // Kita bina dialog modal gantian alert()/confirm()
+            if (!confirm("Adakah anda pasti mahu memadam aktiviti ini secara kekal?")) return;
+
+            showLoading(true, "Memadam rekod...");
+
+            if (isMockMode) {
+                localActivities = localActivities.filter(a => a.activityId !== activityId);
+                localStorage.setItem("apams_mock_activities", JSON.stringify(localActivities));
+                setTimeout(() => {
+                    showLoading(false);
+                    loadActivitiesData();
+                    showToast("Aktiviti dipadam dari lokal.", "info");
+                }, 500);
+            } else {
+                fetch(`${systemSettings.apiUrl}?action=deleteActivity`, {
+                    method: "POST",
+                    body: JSON.stringify({ userId: currentUser.userId, activityId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        loadActivitiesData();
+                        showToast(data.message, "success");
+                    } else {
+                        showToast(data.error, "error");
+                    }
+                })
+                .catch(() => {
+                    showLoading(false);
+                    showToast("Sambungan backend terputus.", "error");
+                });
+            }
+        }
+
+        // DIALOG: UPLOAD FILE MODAL
+        function openUploadModal(activityId, category) {
+            document.getElementById("uploadActivityId").value = activityId;
+            document.getElementById("uploadCategory").value = category;
+            
+            // Reset Drag & Drop UI
+            document.getElementById("fileDisplayContainer").innerHTML = `
+                <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-500 mx-auto"></i>
+                <h4 class="text-xs font-bold text-slate-700">Pilih Dokumen Bukti</h4>
+                <p class="text-[10px] text-slate-400">PDF, PNG, JPG atau Word (Maks 1MB)</p>
+            `;
+            selectedFileBase64 = "";
+            selectedFileName = "";
+
+            const modal = document.getElementById("uploadModal");
+            modal.classList.remove("pointer-events-none", "opacity-0");
+            modal.firstElementChild.classList.remove("scale-95");
+            lucide.createIcons();
+        }
+
+        function closeUploadModal() {
+            const modal = document.getElementById("uploadModal");
+            modal.classList.add("pointer-events-none", "opacity-0");
+            modal.firstElementChild.classList.add("scale-95");
+        }
+
+        // FILE SELECTION BLOB READER
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 1048576) { // 1MB limit
+                showToast("Ukuran fail melebihi 1MB.", "warning");
+                event.target.value = "";
+                return;
+            }
+
+            selectedFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedFileBase64 = e.target.result;
+                document.getElementById("fileDisplayContainer").innerHTML = `
+                    <i data-lucide="file-check" class="w-8 h-8 text-emerald-500 mx-auto animate-bounce"></i>
+                    <h4 class="text-xs font-bold text-emerald-600 truncate max-w-[200px] mx-auto">${file.name}</h4>
+                    <p class="text-[10px] text-slate-400">Fail sedia untuk dimuat naik.</p>
+                `;
+                lucide.createIcons();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // EXECUTE DOCUMENT UPLOAD API
+        function executeDocumentUpload(event) {
+            event.preventDefault();
+
+            if (!selectedFileBase64) {
+                showToast("Sila pilih fail bukti terlebih dahulu.", "warning");
+                return;
+            }
+
+            const activityId = document.getElementById("uploadActivityId").value;
+            const category = document.getElementById("uploadCategory").value;
+
+            showLoading(true, "Mengunggah fail ke Google Drive...");
+
+            if (isMockMode) {
+                // Mock Simpanan Dokumen
+                const idx = localActivities.findIndex(a => a.activityId === activityId);
+                if (idx !== -1) {
+                    if (!localActivities[idx].documents) localActivities[idx].documents = [];
+                    localActivities[idx].documents.push({
+                        docId: "DOC" + new Date().getTime(),
+                        fileName: selectedFileName,
+                        driveUrl: "https://drive.google.com/mock-file-view"
+                    });
+                    localStorage.setItem("apams_mock_activities", JSON.stringify(localActivities));
+                }
+                setTimeout(() => {
+                    showLoading(false);
+                    closeUploadModal();
+                    loadActivitiesData();
+                    showToast("Fail bukti disah simpan (Mock Drive)!", "success");
+                }, 1000);
+            } else {
+                // LIVE DRIVER FILE UPLOADER
+                const payload = {
+                    userId: currentUser.userId,
+                    activityId,
+                    category,
+                    base64: selectedFileBase64,
+                    fileName: selectedFileName
+                };
+
+                fetch(`${systemSettings.apiUrl}?action=uploadDocument`, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        closeUploadModal();
+                        loadActivitiesData();
+                        showToast(data.message, "success");
+                    } else {
+                        showToast(data.error, "error");
+                    }
+                })
+                .catch(() => {
+                    showLoading(false);
+                    showToast("Gagal menghantar fail ke API backend.", "error");
+                });
+            }
+        }
+
+        // GENERATE PDF REPORT ACTION
+        function executePDFGeneration() {
+            if (isMockMode) {
+                showToast("Mod Mock tidak menyokong penjanaan PDF Awan Google Doc. Sila sambung API Live.", "warning");
+                return;
+            }
+
+            const category = document.getElementById("reportCategory").value;
+            showLoading(true, "Memproses data & menjana PDF di Drive...");
+
+            fetch(`${systemSettings.apiUrl}?action=generatePDFReport&userId=${currentUser.userId}&category=${category}`)
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        showToast("Laporan PDF Berjaya Dijana!", "success");
+                        // Buka fail PDF secara terus di tetingkap baharu
+                        window.open(data.pdfUrl, '_blank');
+                    } else {
+                        showToast(data.error, "error");
+                    }
+                })
+                .catch(() => {
+                    showLoading(false);
+                    showToast("Masalah rangkaian cloud API.", "error");
+                });
+        }
+
+        // SAVE & PERSIST SYSTEM SETTINGS
+        function saveSystemSettings() {
+            const apiUrl = document.getElementById("settingApiUrl").value.trim();
+            const phone = document.getElementById("settingWhatsappPhone").value.trim();
+            const callmebotKey = document.getElementById("settingCallmebotKey").value.trim();
+            const notifyEmail = document.getElementById("settingNotifyEmail").checked;
+            const notifyWhatsapp = document.getElementById("settingNotifyWhatsapp").checked;
+
+            systemSettings = {
+                apiUrl,
+                whatsappPhone: phone,
+                callmebotApiKey: callmebotKey,
+                notifyEmail,
+                notifyWhatsapp
+            };
+
+            localStorage.setItem("apams_settings", JSON.stringify(systemSettings));
+            
+            showLoading(true, "Menyelaras tetapan...");
+
+            if (apiUrl) {
+                isMockMode = false;
+                // Simpan tetapan pengguna ke Cloud Database untuk penyelarasan auto-notifikasi
+                fetch(`${apiUrl}?action=saveSettings`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        userId: currentUser ? currentUser.userId : "USER001",
+                        whatsappPhone: phone,
+                        callmebotApiKey: callmebotKey,
+                        notifyEmail,
+                        notifyWhatsapp
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data.success) {
+                        showToast("Tetapan & Penyelarasan API Live disimpan!", "success");
+                        applyUserSettings();
+                    } else {
+                        showToast(data.error, "error");
+                    }
+                })
+                .catch(() => {
+                    showLoading(false);
+                    showToast("Tetapan disimpan secara lokal. Cloud API tidak dapat dihubungi.", "warning");
+                    applyUserSettings();
+                });
+            } else {
+                showLoading(false);
+                isMockMode = true;
+                applyUserSettings();
+                showToast("Tetapan offline disimpan sepenuhnya.", "success");
+            }
+        }
+
+        // HELPER: SYSTEM LOADING BOX
+        function showLoading(show, message = "Sedang diproses...") {
+            let loader = document.getElementById("apamsLoader");
+            if (!loader) {
+                loader = document.createElement("div");
+                loader.id = "apamsLoader";
+                loader.className = "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center z-50 transition-all duration-300";
+                loader.innerHTML = `
+                    <div class="bg-white px-8 py-6 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center space-y-3">
+                        <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <p id="loaderMessage" class="text-xs font-semibold text-slate-600">${message}</p>
+                    </div>
+                `;
+                document.body.appendChild(loader);
+            } else {
+                document.getElementById("loaderMessage").innerText = message;
+                if (show) {
+                    loader.classList.remove("hidden");
+                } else {
+                    loader.classList.add("hidden");
+                }
+            }
+        }
+
+        // HELPER: PREMIUM TOAST SYSTEM
+        function showToast(message, type = "info") {
+            const toast = document.getElementById("toastNotification");
+            const messageElement = document.getElementById("toastMessage");
+            const iconElement = document.getElementById("toastIcon");
+            const iconContainer = document.getElementById("toastIconContainer");
+
+            messageElement.innerText = message;
+
+            // Dynamic styles
+            if (type === "success") {
+                iconContainer.className = "p-1 rounded-full bg-emerald-500";
+                iconElement.setAttribute("data-lucide", "check-circle");
+            } else if (type === "error") {
+                iconContainer.className = "p-1 rounded-full bg-rose-500";
+                iconElement.setAttribute("data-lucide", "x-circle");
+            } else if (type === "warning") {
+                iconContainer.className = "p-1 rounded-full bg-amber-500";
+                iconElement.setAttribute("data-lucide", "alert-triangle");
+            } else {
+                iconContainer.className = "p-1 rounded-full bg-indigo-500";
+                iconElement.setAttribute("data-lucide", "info");
+            }
+
+            lucide.createIcons();
+
+            // Animate toast in
+            toast.classList.remove("translate-y-24", "opacity-0");
+            toast.classList.add("translate-y-0", "opacity-100");
+
+            setTimeout(() => {
+                toast.classList.add("translate-y-24", "opacity-0");
+                toast.classList.remove("translate-y-0", "opacity-100");
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
