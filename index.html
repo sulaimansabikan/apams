@@ -1136,28 +1136,35 @@
 
         // FILE SELECTION BLOB READER
         function handleFileSelected(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
 
-            if (file.size > 1048576) { // 1MB limit
-                showToast("Ukuran fail melebihi 1MB.", "warning");
-                event.target.value = "";
-                return;
-            }
+           // Sediakan array untuk memproses berbilang fail
+           selectedFilesArray = []; 
+           let totalSize = 0;
+           const MAX_SIZE_BYTES = 40 * 1024 * 1024; // 41,943,040 bait (40MB)
 
-            selectedFileName = file.name;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                selectedFileBase64 = e.target.result;
-                document.getElementById("fileDisplayContainer").innerHTML = `
-                    <i data-lucide="file-check" class="w-10 h-10 text-emerald-500 mx-auto animate-bounce"></i>
-                    <h4 class="text-sm font-bold text-emerald-600 truncate max-w-[220px] mx-auto">${file.name}</h4>
-                    <p class="text-xs text-slate-400">Fail sedia untuk dimuat naik.</p>
-                `;
-                lucide.createIcons();
-            };
-            reader.readAsDataURL(file);
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        totalSize += file.size;
+
+        // 1. Semak jika ada fail individu melebihi 40MB
+        if (file.size > MAX_SIZE_BYTES) {
+            showToast(`Fail "${file.name}" melebihi had maksimum 40MB.`, "warning");
+            event.target.value = "";
+            return;
         }
+    }
+
+    // 2. Semak jika jumlah keseluruhan fail melebihi 40MB
+    if (totalSize > MAX_SIZE_BYTES) {
+        showToast("Jumlah saiz keseluruhan fail melebihi had maksimum 40MB.", "warning");
+        event.target.value = "";
+        return;
+    }
+
+    // Kod selebihnya untuk membaca fail sebagai Base64...
+}
 
         // EXECUTE DOCUMENT UPLOAD API
         function executeDocumentUpload(event) {
