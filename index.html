@@ -1,0 +1,636 @@
+/**
+ * ==========================================
+ * APAMS - BACKEND ENGINE (Google Apps Script)
+ * ==========================================
+ * Konfigurasi pangkalan data Google Sheets,
+ * Folder Google Drive, Gmail, WhatsApp & PDF.
+ */
+
+// Sila Ganti ID di bawah selepas menyunting fail ini di Apps Script
+const SPREADSHEET_ID = "1DWUKTAm71oyieMZJ7C6ejPCvnSGdGZaEDYhhARdtQl0";
+const DRIVE_FOLDER_ID = "1wQSUoXaVsE2EYuIwAi0kZJwIoG1koJQI";
+
+/**
+ * Pengendali Request GET (API Read Operations)
+ */
+function doGet(e) {
+  const result = handleRoute(e, "GET");
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Pengendali Request POST (API Create, Update, Delete Operations)
+ */
+function doPost(e) {
+  const result = handleRoute(e, "POST");
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Pengendali Hala Laluan API (API Routing)
+ */
+function handleRoute(e, method) {
+  try {
+    const params = e.parameter;
+    const action = params.action;
+    
+    let postData = null;
+    if (method === "POST" && e.postData && e.postData.contents) {
+      postData = JSON.parse(e.postData.contents);
+    }
+    
+    const db = SpreadsheetApp.openById(SPREADSHEET_ID);
+    
+    // API ACTIONS
+    switch (action) {
+      case "login":
+        return apiLogin(db, postData);
+        
+      case "listActivities":
+        return apiListActivities(db, params.userId);
+        
+      case "addActivity":
+        return apiAddActivity(db, postData);
+        
+      case "updateActivity":
+        return apiUpdateActivity(db, postData);
+        
+      case "deleteActivity":
+        return apiDeleteActivity(db, postData);
+        
+      case "uploadDocument":
+        return apiUploadDocument(db, postData);
+        
+      case "generatePDFReport":
+        return apiGeneratePDFReport(db, params.userId, params.category);
+        
+      case "getSettings":
+        return apiGetSettings(db, params.userId);
+        
+      case "saveSettings":
+        return apiSaveSettings(db, postData);
+        
+      default:
+        return { success: false, error: "Action '" + action + "' tidak disokong." };
+    }
+  } catch (error) {
+    logError("Routing", error.toString());
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * API: Log Masuk Pengguna
+ */
+function apiLogin(db, data) {
+  if (!data || !data.email || !data.password) {
+    return { success: false, error: "E-mel dan kata laluan diperlukan." };
+  }
+  
+  const sheet = db.getSheetByName("Users");
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][2].toString().toLowerCase() === data.email.toLowerCase() && rows[i][3].toString() === data.password) {
+      return {
+        success: true,
+        user: {
+          userId: rows[i][0],
+          name: rows[i][1],
+          email: rows[i][2]
+        }
+      };
+    }
+  }
+  return { success: false, error: "E-mel atau kata laluan salah." };
+}
+
+/**
+ * API: Dapatkan Senarai Aktiviti Berdasarkan UserID
+ */
+function apiListActivities(db, userId) {
+  if (!userId) return { success: false, error: "UserID diperlukan." };
+  
+  const sheet = db.getSheetByName("Activities");
+  const rows = sheet.getDataRange().getValues();
+  const activities = [];
+  
+  // Ambil data dokumen sokongan untuk dihubungkan
+  const docSheet = db.getSheetByName("Documents");
+  const docRows = docSheet.getDataRange().getValues();
+  const docMap = {};
+  
+  for (let j = 1; j < docRows.length; j++) {
+    const actId = docRows[j][1];
+    if (!docMap[actId]) docMap[actId] = [];
+    docMap[actId].push({
+      docId: docRows[j][0],
+      fileName: docRows[j][2],
+      driveUrl: docRows[j][3]
+    });
+  }
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1].toString() === userId) {
+      const actId = rows[i][0].toString();
+      activities.push({
+        activityId: actId,
+        category: rows[i][2],
+        title: rows[i][3],
+        date: Utilities.formatDate(new Date(rows[i][4]), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+        status: rows[i][5],
+        description: rows[i][6] || "",
+        hours: rows[i][7] || 0,
+        documents: docMap[actId] || []
+      });
+    }
+  }
+  
+  return { success: true, activities: activities };
+}
+
+/**
+ * API: Tambah Aktiviti Baharu & Hantar Notifikasi
+ */
+function apiAddActivity(db, data) {
+  if (!data || !data.userId || !data.category || !data.title || !data.date) {
+    return { success: false, error: "Parameter wajib tidak lengkap." };
+  }
+  
+  const sheet = db.getSheetByName("Activities");
+  const activityId = "ACT" + new Date().getTime();
+  
+  sheet.appendRow([
+    activityId,
+    data.userId,
+    data.category,
+    data.title,
+    data.date,
+    data.status || "Pending",
+    data.description || "",
+    data.hours || 0
+  ]);
+  
+  logAuditTrail(db, data.userId, "ADD_ACTIVITY", "Menambah aktiviti: " + data.title);
+  
+  // Hantar Notifikasi Automatik
+  triggerNotifications(db, data.userId, data.title, data.category, data.date);
+  
+  return { success: true, activityId: activityId, message: "Aktiviti berjaya disimpan!" };
+}
+
+/**
+ * API: Kemas kini Aktiviti
+ */
+function apiUpdateActivity(db, data) {
+  if (!data || !data.activityId || !data.userId) {
+    return { success: false, error: "ActivityID dan UserID diperlukan." };
+  }
+  
+  const sheet = db.getSheetByName("Activities");
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString() === data.activityId && rows[i][1].toString() === data.userId) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (rowIndex === -1) return { success: false, error: "Aktiviti tidak dijumpai." };
+  
+  sheet.getRange(rowIndex, 3).setValue(data.category);
+  sheet.getRange(rowIndex, 4).setValue(data.title);
+  sheet.getRange(rowIndex, 5).setValue(data.date);
+  sheet.getRange(rowIndex, 6).setValue(data.status);
+  sheet.getRange(rowIndex, 7).setValue(data.description || "");
+  sheet.getRange(rowIndex, 8).setValue(data.hours || 0);
+  
+  logAuditTrail(db, data.userId, "UPDATE_ACTIVITY", "Kemaskini aktiviti: " + data.title);
+  
+  return { success: true, message: "Aktiviti berjaya dikemas kini!" };
+}
+
+/**
+ * API: Padam Aktiviti
+ */
+function apiDeleteActivity(db, data) {
+  if (!data || !data.activityId || !data.userId) {
+    return { success: false, error: "ActivityID dan UserID diperlukan." };
+  }
+  
+  const sheet = db.getSheetByName("Activities");
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString() === data.activityId && rows[i][1].toString() === data.userId) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (rowIndex === -1) return { success: false, error: "Aktiviti tidak dijumpai." };
+  
+  sheet.deleteRow(rowIndex);
+  
+  // Padamkan juga rekod dokumen berkaitan dari sheet Documents
+  const docSheet = db.getSheetByName("Documents");
+  const docRows = docSheet.getDataRange().getValues();
+  for (let j = docRows.length - 1; j >= 1; j--) {
+    if (docRows[j][1].toString() === data.activityId) {
+      docSheet.deleteRow(j + 1);
+    }
+  }
+  
+  logAuditTrail(db, data.userId, "DELETE_ACTIVITY", "Memadam aktiviti ID: " + data.activityId);
+  return { success: true, message: "Aktiviti berjaya dipadamkan." };
+}
+
+/**
+ * API: Muat Naik Fail & Simpan Ke Sub-folder Drive Kategori
+ */
+function apiUploadDocument(db, data) {
+  if (!data || !data.userId || !data.activityId || !data.base64 || !data.fileName || !data.category) {
+    return { success: false, error: "Data muat naik fail tidak lengkap." };
+  }
+  
+  try {
+    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    let targetFolder;
+    
+    // Cari atau bina subfolder mengikut kategori portfolio akademik
+    const subfolders = parentFolder.getFoldersByName(data.category);
+    if (subfolders.hasNext()) {
+      targetFolder = subfolders.next();
+    } else {
+      targetFolder = parentFolder.createFolder(data.category);
+    }
+    
+    // Proses fail base64
+    const contentParts = data.base64.split(",");
+    const base64Data = contentParts.length > 1 ? contentParts[1] : contentParts[0];
+    const decodedBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), getMimeTypeByFileName(data.fileName), data.fileName);
+    
+    // Simpan ke Google Drive
+    const driveFile = targetFolder.createFile(decodedBlob);
+    driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW); // Set akses tontonan umum
+    
+    const driveUrl = driveFile.getUrl();
+    const docId = "DOC" + new Date().getTime();
+    
+    // Rekod ke pangkalan data Google Sheets
+    const docSheet = db.getSheetByName("Documents");
+    docSheet.appendRow([
+      docId,
+      data.activityId,
+      data.fileName,
+      driveUrl
+    ]);
+    
+    logAuditTrail(db, data.userId, "UPLOAD_DOCUMENT", "Muat naik fail: " + data.fileName);
+    
+    return { success: true, docId: docId, driveUrl: driveUrl, message: "Dokumen berjaya dimuat naik!" };
+  } catch (error) {
+    return { success: false, error: "Ralat muat naik: " + error.toString() };
+  }
+}
+
+/**
+ * API: Dapatkan Konfigurasi Settings
+ */
+function apiGetSettings(db, userId) {
+  if (!userId) return { success: false, error: "UserID diperlukan." };
+  
+  const sheet = db.getSheetByName("Settings");
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString() === userId) {
+      return {
+        success: true,
+        settings: {
+          whatsappPhone: rows[i][1],
+          callmebotApiKey: rows[i][2],
+          notifyEmail: rows[i][3],
+          notifyWhatsapp: rows[i][4]
+        }
+      };
+    }
+  }
+  
+  // Jika tiada rekod, hantar default kosong
+  return {
+    success: true,
+    settings: { whatsappPhone: "", callmebotApiKey: "", notifyEmail: true, notifyWhatsapp: false }
+  };
+}
+
+/**
+ * API: Simpan Konfigurasi Settings
+ */
+function apiSaveSettings(db, data) {
+  if (!data || !data.userId) return { success: false, error: "UserID diperlukan." };
+  
+  const sheet = db.getSheetByName("Settings");
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString() === data.userId) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (rowIndex !== -1) {
+    sheet.getRange(rowIndex, 2).setValue(data.whatsappPhone || "");
+    sheet.getRange(rowIndex, 3).setValue(data.callmebotApiKey || "");
+    sheet.getRange(rowIndex, 4).setValue(data.notifyEmail !== undefined ? data.notifyEmail : true);
+    sheet.getRange(rowIndex, 5).setValue(data.notifyWhatsapp !== undefined ? data.notifyWhatsapp : false);
+  } else {
+    sheet.appendRow([
+      data.userId,
+      data.whatsappPhone || "",
+      data.callmebotApiKey || "",
+      data.notifyEmail !== undefined ? data.notifyEmail : true,
+      data.notifyWhatsapp !== undefined ? data.notifyWhatsapp : false
+    ]);
+  }
+  
+  logAuditTrail(db, data.userId, "SAVE_SETTINGS", "Mengemas kini tetapan akaun.");
+  return { success: true, message: "Tetapan berjaya disimpan!" };
+}
+
+/**
+ * API: Jana Laporan PDF untuk Aktiviti Akademik
+ */
+function apiGeneratePDFReport(db, userId, category) {
+  if (!userId) return { success: false, error: "UserID diperlukan." };
+  
+  try {
+    const userSheet = db.getSheetByName("Users");
+    const userRows = userSheet.getDataRange().getValues();
+    let userName = "Pensyarah";
+    let userEmail = "";
+    
+    for (let u = 1; u < userRows.length; u++) {
+      if (userRows[u][0].toString() === userId) {
+        userName = userRows[u][1];
+        userEmail = userRows[u][2];
+        break;
+      }
+    }
+    
+    const actSheet = db.getSheetByName("Activities");
+    const actRows = actSheet.getDataRange().getValues();
+    
+    // Cipta Dokumen Google Doc Baharu sebagai Templat
+    const docTitle = "Laporan Portfolio Akademik - " + userName;
+    const tempDoc = DocumentApp.create(docTitle);
+    const body = tempDoc.getBody();
+    
+    // Set Gaya Tajuk
+    body.appendParagraph("ACADEMIC PORTFOLIO & ACTIVITY REPORT")
+        .setHeading(DocumentApp.ParagraphHeading.TITLE)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        
+    body.appendParagraph("Jana Tarikh: " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm"))
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    
+    body.appendHorizontalRule();
+    
+    // Informasi Pensyarah
+    body.appendParagraph("PROFIL AKADEMIK").setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    body.appendParagraph("Nama Pensyarah: " + userName);
+    body.appendParagraph("E-mel: " + userEmail);
+    body.appendParagraph("Skop Penilaian: " + (category && category !== "All" ? category : "Semua Kategori Portfolio"));
+    
+    body.appendHorizontalRule();
+    body.appendParagraph("SENARAI REKOD AKTIVITI").setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    
+    // Sediakan Data Jadual
+    const tableData = [["Kategori", "Tajuk Aktiviti", "Tarikh", "Status", "Jam/Kredit"]];
+    let totalHours = 0;
+    let recordsCount = 0;
+    
+    for (let i = 1; i < actRows.length; i++) {
+      if (actRows[i][1].toString() === userId) {
+        const actCategory = actRows[i][2];
+        
+        // Filter mengikut kategori jika diminta
+        if (category && category !== "All" && actCategory !== category) continue;
+        
+        const title = actRows[i][3];
+        const dateStr = Utilities.formatDate(new Date(actRows[i][4]), Session.getScriptTimeZone(), "dd-MM-yyyy");
+        const status = actRows[i][5];
+        const hours = actRows[i][7] || 0;
+        
+        tableData.push([actCategory, title, dateStr, status, hours.toString()]);
+        totalHours += Number(hours);
+        recordsCount++;
+      }
+    }
+    
+    if (recordsCount > 0) {
+      const table = body.appendTable(tableData);
+      table.setBorderColor("#cbd5e1");
+      table.setBorderWidth(1);
+      
+      // Format baris pertama (Header)
+      const headerRow = table.getRow(0);
+      for (let c = 0; c < headerRow.getNumCells(); c++) {
+        headerRow.getCell(c).setBackgroundColor("#1e293b").getParagraphs()[0].getChild(0).setBold(true).setForegroundColor("#ffffff");
+      }
+      
+      body.appendParagraph("\nJumlah Aktiviti: " + recordsCount);
+      body.appendParagraph("Jumlah Sumbangan Jam/Kredit: " + totalHours + " jam");
+    } else {
+      body.appendParagraph("Tiada aktiviti yang direkodkan bagi kategori ini.");
+    }
+    
+    tempDoc.saveAndClose();
+    
+    // Convert Google Doc to PDF
+    const docFile = DriveApp.getFileById(tempDoc.getId());
+    const pdfBlob = docFile.getAs(MimeType.PDF);
+    
+    // Simpan fail PDF ke Drive utama
+    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const pdfFile = parentFolder.createFile(pdfBlob);
+    pdfFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+    
+    // Padamkan fail Google Doc sementara
+    docFile.setTrashed(true);
+    
+    logAuditTrail(db, userId, "GENERATE_PDF", "Menjana laporan PDF bagi kategori: " + (category || "Semua"));
+    
+    return { success: true, pdfUrl: pdfFile.getUrl(), message: "Laporan PDF berjaya dijana!" };
+  } catch (error) {
+    return { success: false, error: "Gagal menjana PDF: " + error.toString() };
+  }
+}
+
+/**
+ * PEMBANTU: Log Audit Trail (Untuk Jejak Aktiviti/Keselamatan)
+ */
+function logAuditTrail(db, userId, action, details) {
+  try {
+    const sheet = db.getSheetByName("Logs");
+    sheet.appendRow([
+      new Date(),
+      userId,
+      action,
+      details
+    ]);
+  } catch (e) {
+    // Abaikan jika ralat log
+  }
+}
+
+/**
+ * PEMBANTU: Log Ralat Sistem ke Sheets
+ */
+function logError(context, message) {
+  try {
+    const db = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = db.getSheetByName("Logs");
+    sheet.appendRow([
+      new Date(),
+      "SYSTEM_ERROR",
+      context,
+      message
+    ]);
+  } catch (e) {
+    // Abaikan
+  }
+}
+
+/**
+ * PEMBANTU: Penghantaran Notifikasi Gmail & WhatsApp
+ */
+function triggerNotifications(db, userId, title, category, date) {
+  try {
+    // 1. Ambil maklumat User
+    const userSheet = db.getSheetByName("Users");
+    const userRows = userSheet.getDataRange().getValues();
+    let email = "";
+    let name = "";
+    
+    for (let u = 1; u < userRows.length; u++) {
+      if (userRows[u][0].toString() === userId) {
+        name = userRows[u][1];
+        email = userRows[u][2];
+        break;
+      }
+    }
+    
+    if (!email) return;
+    
+    // 2. Ambil tetapan notifikasi
+    const settingsSheet = db.getSheetByName("Settings");
+    const settingsRows = settingsSheet.getDataRange().getValues();
+    let notifyEmail = true;
+    let notifyWhatsapp = false;
+    let phone = "";
+    let apiKey = "";
+    
+    for (let s = 1; s < settingsRows.length; s++) {
+      if (settingsRows[s][0].toString() === userId) {
+        phone = settingsRows[s][1];
+        apiKey = settingsRows[s][2];
+        notifyEmail = settingsRows[s][3] === true || settingsRows[s][3] === "true";
+        notifyWhatsapp = settingsRows[s][4] === true || settingsRows[s][4] === "true";
+        break;
+      }
+    }
+    
+    const messageBody = "Salam Sejahtera " + name + ",\n\n" +
+                        "Aktiviti akademik baharu telah berjaya direkodkan ke dalam sistem APAMS anda.\n\n" +
+                        "📌 Tajuk: " + title + "\n" +
+                        "📌 Kategori: " + category + "\n" +
+                        "📌 Tarikh: " + date + "\n\n" +
+                        "Sila log masuk ke dashboard anda untuk memuat naik dokumen bukti sokongan.\n\n" +
+                        "Sistem APAMS Autogeneration.";
+    
+    // 3. Penghantaran Gmail
+    if (notifyEmail) {
+      GmailApp.sendEmail(email, "APAMS: Rekod Aktiviti Baharu Berjaya", messageBody);
+    }
+    
+    // 4. Penghantaran WhatsApp (Menggunakan CallMeBot API)
+    if (notifyWhatsapp && phone && apiKey) {
+      const waText = encodeURIComponent("🔔 *APAMS: Aktiviti Akademik Baharu*\n\nTajuk: " + title + "\nKategori: " + category + "\nTarikh: " + date + "\n\nSila muat naik bukti sokongan di portal.");
+      const waUrl = "https://api.callmebot.com/whatsapp.php?phone=" + phone + "&text=" + waText + "&apikey=" + apiKey;
+      
+      // Hantar permintaan HTTP secara tidak segerak (asynchronous request) ke CallMeBot API
+      UrlFetchApp.fetch(waUrl, { muteHttpExceptions: true });
+    }
+    
+  } catch (error) {
+    logError("Notification_Engine", error.toString());
+  }
+}
+
+/**
+ * PEMBANTU: Pengenalan MimeType Berdasarkan Hujung Fail
+ */
+function getMimeTypeByFileName(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  switch (ext) {
+    case 'pdf': return MimeType.PDF;
+    case 'png': return MimeType.PNG;
+    case 'jpg':
+    case 'jpeg': return MimeType.JPEG;
+    case 'doc':
+    case 'docx': return MimeType.MICROSOFT_WORD;
+    case 'xls':
+    case 'xlsx': return MimeType.MICROSOFT_EXCEL;
+    default: return 'application/octet-stream';
+  }
+}
+
+/**
+ * FUNGSI AUTO-SETUP: Jalankan ini sekali untuk membina database lengkap
+ */
+function setupDatabase() {
+  const db = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  const sheets = [
+    { name: "Users", headers: ["UserID", "Name", "Email", "Password"] },
+    { name: "Activities", headers: ["ActivityID", "UserID", "Category", "Title", "Date", "Status", "Description", "Hours"] },
+    { name: "Documents", headers: ["DocID", "ActivityID", "FileName", "DriveURL"] },
+    { name: "Logs", headers: ["Timestamp", "UserID", "Action", "Details"] },
+    { name: "Settings", headers: ["UserID", "WhatsappPhone", "CallmebotApiKey", "NotifyEmail", "NotifyWhatsapp"] }
+  ];
+  
+  sheets.forEach(function(s) {
+    let sheet = db.getSheetByName(s.name);
+    if (!sheet) {
+      sheet = db.insertSheet(s.name);
+      sheet.appendRow(s.headers);
+      
+      // Cantikkan baris tajuk
+      sheet.getRange(1, 1, 1, s.headers.length)
+        .setBackground("#1e293b")
+        .setFontColor("#ffffff")
+        .setFontWeight("bold");
+    }
+  });
+  
+  // Wujudkan subfolder utama di Google Drive untuk portfolio akademik
+  const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const categories = ["Teaching", "Research", "Publication", "Consultation", "Administration", "Community Service"];
+  
+  categories.forEach(function(cat) {
+    const check = parentFolder.getFoldersByName(cat);
+    if (!check.hasNext()) {
+      parentFolder.createFolder(cat);
+    }
+  });
+  
+  Logger.log("Pangkalan data APAMS berjaya dikonfigurasi sepenuhnya!");
+}
