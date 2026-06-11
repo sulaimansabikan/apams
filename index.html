@@ -571,7 +571,7 @@
             lucide.createIcons();
         });
 
-        //        // VIEW NAVIGATION ENGINE
+        // VIEW NAVIGATION ENGINE
         function switchView(viewId) {
             // Hide all views
             const views = ["loginView", "dashboardView", "activitiesView", "reportsView", "settingsView"];
@@ -593,13 +593,15 @@
 
             if (viewId === "login") {
                 document.getElementById("loginView").classList.remove("hidden");
+                // Sembunyikan sidebar secara total di semua skrin semasa skrin login (mengelakkan override md:flex)
                 sidebar.classList.add("hidden");
+                sidebar.classList.remove("md:flex"); 
                 topHeader.classList.add("hidden");
                 botNav.classList.add("hidden");
             } else {
-                // Sembunyikan sidebar di skrin mobile, hanya tunjuk di skrin besar (md:flex)
+                // Tunjukkan sidebar hanya di skrin besar (md:flex) dan kekal sembuni di skrin kecil (hidden)
                 sidebar.classList.add("hidden");
-                sidebar.classList.remove("flex"); 
+                sidebar.classList.add("md:flex"); 
                 
                 topHeader.classList.remove("hidden");
                 botNav.classList.remove("hidden");
@@ -639,7 +641,7 @@
             lucide.createIcons();
         }
 
-        //        // EXECUTE AUTH LOGIN
+        // EXECUTE AUTH LOGIN
         function executeLogin(event) {
             event.preventDefault();
             const email = document.getElementById("loginEmail").value.trim();
