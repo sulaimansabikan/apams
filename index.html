@@ -6,7 +6,7 @@
     <title>APAMS - Academic Portfolio & Activity Management</title>
     <!-- Tailwind CSS & Inter Font -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- ChartJS for rich visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons -->
@@ -34,69 +34,69 @@
         }
     </style>
 </head>
-<body class="h-full flex flex-col overflow-hidden text-slate-800 text-sm md:text-base">
+<body class="h-full flex flex-col overflow-hidden text-slate-800">
 
     <!-- NO-CONNECTION/MOCK STATE TOAST -->
-    <div id="mockToast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-5 py-3 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all duration-300 transform scale-0">
+    <div id="mockToast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 transition-all duration-300 transform scale-0">
         <i data-lucide="wifi-off" class="w-4 h-4"></i>
         <span>Offline/Mock Mode Aktif (Data disimpan lokal).</span>
     </div>
 
     <!-- MAIN ALERT TOAST SYSTEM -->
-    <div id="toastNotification" class="fixed bottom-24 md:bottom-6 right-4 z-50 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 max-w-sm">
-        <div id="toastIconContainer" class="p-1.5 rounded-full bg-indigo-500">
-            <i id="toastIcon" data-lucide="info" class="w-5 h-5 text-white"></i>
+    <div id="toastNotification" class="fixed bottom-20 md:bottom-6 right-4 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 max-w-sm">
+        <div id="toastIconContainer" class="p-1 rounded-full bg-indigo-500">
+            <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-white"></i>
         </div>
-        <p id="toastMessage" class="text-sm font-medium"></p>
+        <p id="toastMessage" class="text-xs font-medium"></p>
     </div>
 
     <!-- APP WRAPPER -->
     <div class="flex flex-col md:flex-row h-full w-full overflow-hidden">
         
-        <!-- SIDEBAR NAVIGATION (Desktop Only - Hidden by default on Mobile) -->
+        <!-- SIDEBAR NAVIGATION (Desktop Only - Auto Hidden on Mobile before and after login) -->
         <aside id="sidebar" class="hidden md:flex flex-col w-64 bg-slate-900 text-white p-5 space-y-6 flex-shrink-0">
             <div class="flex items-center gap-3 py-3 border-b border-slate-800">
                 <div class="p-2 bg-indigo-600 rounded-lg">
                     <i data-lucide="graduation-cap" class="w-6 h-6 text-white animate-bounce"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">APAMS</h1>
-                    <span class="text-xs text-slate-400 font-medium tracking-widest">PORTFOLIO</span>
+                    <h1 class="font-bold text-base leading-tight">APAMS</h1>
+                    <span class="text-[10px] text-slate-400 font-medium tracking-widest">PORTFOLIO</span>
                 </div>
             </div>
 
             <!-- Profile Info -->
             <div class="bg-slate-800/50 p-3 rounded-xl flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-lg" id="profileInitials">
+                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-sm" id="profileInitials">
                     P
                 </div>
                 <div class="overflow-hidden">
-                    <h4 class="font-semibold text-sm truncate" id="profileName">Nama Pensyarah</h4>
-                    <p class="text-xs text-slate-400 truncate" id="profileEmail">email@pensyarah.com</p>
+                    <h4 class="font-semibold text-xs truncate" id="profileName">Nama Pensyarah</h4>
+                    <p class="text-[10px] text-slate-400 truncate" id="profileEmail">email@pensyarah.com</p>
                 </div>
             </div>
 
             <nav class="flex-1 space-y-1">
-                <button onclick="switchView('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all hover:bg-slate-800 bg-indigo-600" data-view="dashboard">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <button onclick="switchView('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all hover:bg-slate-800 bg-indigo-600" data-view="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                     Dashboard
                 </button>
-                <button onclick="switchView('activities')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="activities">
-                    <i data-lucide="list-todo" class="w-5 h-5"></i>
+                <button onclick="switchView('activities')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="activities">
+                    <i data-lucide="list-todo" class="w-4 h-4"></i>
                     Aktiviti Portfolio
                 </button>
-                <button onclick="switchView('reports')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="reports">
-                    <i data-lucide="file-bar-chart" class="w-5 h-5"></i>
+                <button onclick="switchView('reports')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="reports">
+                    <i data-lucide="file-bar-chart" class="w-4 h-4"></i>
                     Jana Laporan
                 </button>
-                <button onclick="switchView('settings')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="settings">
-                    <i data-lucide="settings" class="w-5 h-5"></i>
+                <button onclick="switchView('settings')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:bg-slate-800" data-view="settings">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
                     Tetapan API Cloud
                 </button>
             </nav>
 
-            <button onclick="handleLogout()" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-slate-800/50 rounded-lg transition-all w-full text-left">
-                <i data-lucide="log-out" class="w-5 h-5"></i>
+            <button onclick="handleLogout()" class="flex items-center gap-3 px-4 py-3 text-xs font-semibold text-red-400 hover:bg-slate-800/50 rounded-lg transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
                 Keluar Sistem
             </button>
         </aside>
@@ -109,18 +109,14 @@
                     <div class="md:hidden p-2 rounded-lg bg-indigo-50 text-indigo-600">
                         <i data-lucide="graduation-cap" class="w-6 h-6"></i>
                     </div>
-                    <h2 id="currentViewTitle" class="text-base font-bold text-slate-800">Dashboard Utama</h2>
+                    <h2 id="currentViewTitle" class="text-sm font-bold text-slate-800">Dashboard Utama</h2>
                 </div>
                 <div class="flex items-center gap-3">
                     <!-- Synced status -->
-                    <span id="syncIndicator" class="text-xs bg-emerald-50 text-emerald-600 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                    <span id="syncIndicator" class="text-[10px] bg-emerald-50 text-emerald-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
                         Mock Database
                     </span>
-                    <!-- Mobile Logout Button -->
-                    <button onclick="handleLogout()" id="mobileLogoutBtn" class="md:hidden p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Keluar">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                    </button>
                 </div>
             </header>
 
@@ -132,10 +128,10 @@
                     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
                         <div class="flex flex-col items-center text-center mb-8">
                             <div class="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-200 mb-4">
-                                <i data-lucide="graduation-cap" class="w-12 h-12"></i>
+                                <i data-lucide="graduation-cap" class="w-10 h-10"></i>
                             </div>
-                            <h2 class="text-2xl font-bold text-slate-800">Sistem Portfolio Akademik</h2>
-                            <p class="text-sm text-slate-400 mt-1">Urus Pengajaran, Penyelidikan & Notifikasi PWA</p>
+                            <h2 class="text-xl font-bold text-slate-800">Sistem Portfolio Akademik</h2>
+                            <p class="text-xs text-slate-400 mt-1">Urus Pengajaran, Penyelidikan & Notifikasi PWA</p>
                         </div>
 
                         <form id="loginForm" onsubmit="executeLogin(event)" class="space-y-4">
@@ -143,7 +139,7 @@
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Alamat E-mel</label>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                        <i data-lucide="mail" class="w-5 h-5"></i>
+                                        <i data-lucide="mail" class="w-4 h-4"></i>
                                     </span>
                                     <input type="email" id="loginEmail" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="nama@email.com">
                                 </div>
@@ -152,21 +148,21 @@
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">Kata Laluan</label>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                                        <i data-lucide="lock" class="w-5 h-5"></i>
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
                                     </span>
                                     <input type="password" id="loginPassword" required class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="••••••••">
                                 </div>
                             </div>
                             
-                            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100/50">
-                                <p class="text-xs text-indigo-700 font-medium">
+                            <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100/50">
+                                <p class="text-[10px] text-indigo-700 font-medium">
                                     💡 <strong>Demo Credential:</strong><br>
                                     E-mel: <code>ahmad@email.com</code> | Laluan: <code>password123</code>
                                 </p>
                             </div>
 
                             <button type="submit" id="loginBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition-all text-sm flex items-center justify-center gap-2">
-                                <i data-lucide="log-in" class="w-5 h-5"></i>
+                                <i data-lucide="log-in" class="w-4 h-4"></i>
                                 Log Masuk Portal
                             </button>
                         </form>
@@ -178,9 +174,9 @@
                     <!-- Welcome Banner -->
                     <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
                         <div class="relative z-10 space-y-2">
-                            <span class="bg-indigo-500/30 text-indigo-200 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider">APAMS Dashboard</span>
-                            <h2 class="text-xl md:text-2xl font-bold leading-tight">Selamat Datang, <span id="dashWelcomeName" class="text-indigo-300">Profesor</span></h2>
-                            <p class="text-sm text-slate-300 max-w-xl">Urus, pantau dan jana laporan aktiviti akademik seperti mengajar, membuat penyelidikan serta perkhidmatan masyarakat dengan mudah di dalam satu platform.</p>
+                            <span class="bg-indigo-500/30 text-indigo-200 font-bold px-3 py-1 rounded-full text-[10px] uppercase tracking-wider">APAMS Dashboard</span>
+                            <h2 class="text-lg md:text-xl font-bold leading-tight">Selamat Datang, <span id="dashWelcomeName" class="text-indigo-300">Profesor</span></h2>
+                            <p class="text-xs text-slate-300 max-w-xl">Urus, pantau dan jana laporan aktiviti akademik seperti mengajar, membuat penyelidikan serta perkhidmatan masyarakat dengan mudah di dalam satu platform.</p>
                         </div>
                         <i data-lucide="sparkles" class="absolute right-6 bottom-4 w-28 h-28 text-white/5 pointer-events-none"></i>
                     </div>
@@ -188,34 +184,34 @@
                     <!-- KPI Statistics Grid -->
                     <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-emerald-600 tracking-wider">TEACHING</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statTeaching">0</h3>
-                            <span class="text-xs text-slate-400">Jam Pengajaran</span>
+                            <span class="text-[10px] font-bold text-emerald-600 tracking-wider">TEACHING</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statTeaching">0</h3>
+                            <span class="text-[9px] text-slate-400">Jam Pengajaran</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-indigo-600 tracking-wider">RESEARCH</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statResearch">0</h3>
-                            <span class="text-xs text-slate-400">Penyelidikan</span>
+                            <span class="text-[10px] font-bold text-indigo-600 tracking-wider">RESEARCH</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statResearch">0</h3>
+                            <span class="text-[9px] text-slate-400">Penyelidikan</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-amber-600 tracking-wider">PUBLICATION</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statPublication">0</h3>
-                            <span class="text-xs text-slate-400">Penerbitan Fail</span>
+                            <span class="text-[10px] font-bold text-amber-600 tracking-wider">PUBLICATION</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statPublication">0</h3>
+                            <span class="text-[9px] text-slate-400">Penerbitan Fail</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-rose-600 tracking-wider">CONSULT</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statConsultation">0</h3>
-                            <span class="text-xs text-slate-400">Rundingan</span>
+                            <span class="text-[10px] font-bold text-rose-600 tracking-wider">CONSULT</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statConsultation">0</h3>
+                            <span class="text-[9px] text-slate-400">Rundingan</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-cyan-600 tracking-wider">ADMIN</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statAdministration">0</h3>
-                            <span class="text-xs text-slate-400">Pentadbiran</span>
+                            <span class="text-[10px] font-bold text-cyan-600 tracking-wider">ADMIN</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statAdministration">0</h3>
+                            <span class="text-[9px] text-slate-400">Pentadbiran</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <span class="text-xs font-bold text-purple-600 tracking-wider">COMMUNITY</span>
-                            <h3 class="text-3xl font-extrabold text-slate-800 my-2" id="statCommunity">0</h3>
-                            <span class="text-xs text-slate-400">Khidmat Masyarakat</span>
+                            <span class="text-[10px] font-bold text-purple-600 tracking-wider">COMMUNITY</span>
+                            <h3 class="text-2xl font-extrabold text-slate-800 my-2" id="statCommunity">0</h3>
+                            <span class="text-[9px] text-slate-400">Khidmat Masyarakat</span>
                         </div>
                     </div>
 
@@ -224,8 +220,8 @@
                         <!-- ChartJS Card -->
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 flex flex-col">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="font-bold text-sm text-slate-800 uppercase tracking-wide">Analisis Agihan Jam Sumbangan Kategori</h4>
-                                <span class="text-xs bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded">KPI Chart</span>
+                                <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wide">Analisis Agihan Jam Sumbangan Kategori</h4>
+                                <span class="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded">KPI Chart</span>
                             </div>
                             <div class="flex-1 min-h-[250px] relative">
                                 <canvas id="kpiChart"></canvas>
@@ -234,7 +230,7 @@
 
                         <!-- Recent Activities List -->
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                            <h4 class="font-bold text-sm text-slate-800 uppercase tracking-wide mb-4">Aktiviti Terbaharu</h4>
+                            <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wide mb-4">Aktiviti Terbaharu</h4>
                             <div class="flex-1 space-y-3 overflow-y-auto max-h-[250px]" id="dashRecentList">
                                 <!-- Dynamic List -->
                             </div>
@@ -248,7 +244,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                         <!-- Filter & Search -->
                         <div class="flex flex-wrap items-center gap-2">
-                            <select id="filterCategory" onchange="loadActivitiesData()" class="border border-slate-200 text-sm rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <select id="filterCategory" onchange="loadActivitiesData()" class="border border-slate-200 text-xs rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                                 <option value="All">Semua Kategori</option>
                                 <option value="Teaching">Teaching</option>
                                 <option value="Research">Research</option>
@@ -257,11 +253,11 @@
                                 <option value="Administration">Administration</option>
                                 <option value="Community Service">Community Service</option>
                             </select>
-                            <input type="text" id="searchKeyword" onkeyup="loadActivitiesData()" placeholder="Cari aktiviti..." class="border border-slate-200 text-sm rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48">
+                            <input type="text" id="searchKeyword" onkeyup="loadActivitiesData()" placeholder="Cari aktiviti..." class="border border-slate-200 text-xs rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44">
                         </div>
                         
-                        <button onclick="openActivityModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all">
-                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        <button onclick="openActivityModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
                             Tambah Aktiviti
                         </button>
                     </div>
@@ -271,7 +267,7 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50/75 border-b border-slate-200 text-slate-400 text-xs font-bold tracking-wider uppercase">
+                                    <tr class="bg-slate-50/75 border-b border-slate-200 text-slate-400 text-[10px] font-bold tracking-wider uppercase">
                                         <th class="px-6 py-4">Kategori</th>
                                         <th class="px-6 py-4">Aktiviti</th>
                                         <th class="px-6 py-4">Tarikh</th>
@@ -281,7 +277,7 @@
                                         <th class="px-6 py-4 text-right">Tindakan</th>
                                     </tr>
                                 </thead>
-                                <tbody id="activitiesTableBody" class="divide-y divide-slate-100 text-sm">
+                                <tbody id="activitiesTableBody" class="divide-y divide-slate-100 text-xs">
                                     <!-- Dynamic rows will populate here -->
                                 </tbody>
                             </table>
@@ -292,16 +288,16 @@
                 <!-- 4. REPORTS VIEW -->
                 <div id="reportsView" class="hidden space-y-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto space-y-4">
-                        <h3 class="font-bold text-base text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+                        <h3 class="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
                             <i data-lucide="printer" class="w-5 h-5 text-indigo-600"></i>
                             Jana Laporan Portfolio PDF
                         </h3>
-                        <p class="text-sm text-slate-400">Jana fail laporan PDF yang teratur terus dari simpanan Google Drive anda untuk digunakan sebagai bukti bagi tujuan kenaikan pangkat (promotion) atau penilaian prestasi tahunan.</p>
+                        <p class="text-xs text-slate-400">Jana fail laporan PDF yang teratur terus dari simpanan Google Drive anda untuk digunakan sebagai bukti bagi tujuan kenaikan pangkat (promotion) atau penilaian prestasi tahunan.</p>
                         
                         <div class="space-y-4 pt-2">
                             <div>
-                                <label class="block text-sm font-semibold text-slate-500 mb-1">Skop Kategori</label>
-                                <select id="reportCategory" class="w-full border border-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Skop Kategori</label>
+                                <select id="reportCategory" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                                     <option value="All">Semua Aktiviti Portfolio</option>
                                     <option value="Teaching">Teaching Report Only</option>
                                     <option value="Research">Research Report Only</option>
@@ -310,8 +306,8 @@
                                 </select>
                             </div>
 
-                            <button onclick="executePDFGeneration()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm flex items-center justify-center gap-2">
-                                <i data-lucide="file-text" class="w-5 h-5"></i>
+                            <button onclick="executePDFGeneration()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs flex items-center justify-center gap-2">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
                                 Jana & Muat Turun PDF Sekarang
                             </button>
                         </div>
@@ -322,52 +318,52 @@
                 <div id="settingsView" class="hidden space-y-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto space-y-6">
                         <div>
-                            <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
                                 <i data-lucide="cloud" class="w-5 h-5 text-indigo-600"></i>
                                 Konfigurasi Integrasi Cloud API
                             </h3>
-                            <p class="text-sm text-slate-400 mt-1">Hubungkan frontend dengan pangkalan data Google Sheet dan storan fail Drive menggunakan Apps Script Web App URL.</p>
+                            <p class="text-xs text-slate-400 mt-1">Hubungkan frontend dengan pangkalan data Google Sheet dan storan fail Drive menggunakan Apps Script Web App URL.</p>
                         </div>
 
                         <div class="space-y-4 border-t border-slate-100 pt-4">
                             <div>
-                                <label class="block text-sm font-semibold text-slate-500 mb-1">Google Apps Script API URL</label>
-                                <input type="text" id="settingApiUrl" class="w-full border border-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="https://script.google.com/macros/s/.../exec">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Google Apps Script API URL</label>
+                                <input type="text" id="settingApiUrl" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="https://script.google.com/macros/s/.../exec">
                             </div>
 
                             <div class="border-t border-slate-100 pt-4">
-                                <h4 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
-                                    <i data-lucide="message-square" class="w-5 h-5 text-emerald-600"></i>
+                                <h4 class="font-bold text-xs text-slate-800 mb-3 flex items-center gap-2">
+                                    <i data-lucide="message-square" class="w-4 h-4 text-emerald-600"></i>
                                     Tetapan Notifikasi WhatsApp (CallMeBot)
                                 </h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-semibold text-slate-500 mb-1">Nombor WhatsApp (Contoh: +60123456789)</label>
-                                        <input type="text" id="settingWhatsappPhone" class="w-full border border-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="+601XXXXXXXX">
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">Nombor WhatsApp (Contoh: +60123456789)</label>
+                                        <input type="text" id="settingWhatsappPhone" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="+601XXXXXXXX">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-semibold text-slate-500 mb-1">CallMeBot API Key</label>
-                                        <input type="password" id="settingCallmebotKey" class="w-full border border-slate-200 text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="API Key">
+                                        <label class="block text-xs font-semibold text-slate-500 mb-1">CallMeBot API Key</label>
+                                        <input type="password" id="settingCallmebotKey" class="w-full border border-slate-200 text-xs rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="API Key">
                                     </div>
                                 </div>
                             </div>
 
                             <div class="border-t border-slate-100 pt-4 space-y-3">
-                                <h4 class="font-bold text-sm text-slate-800">Pilihan Saluran Notifikasi</h4>
+                                <h4 class="font-bold text-xs text-slate-800">Pilihan Saluran Notifikasi</h4>
                                 <div class="flex items-center gap-6">
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" id="settingNotifyEmail" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                        <span class="text-sm text-slate-600 font-medium">Melalui Gmail</span>
+                                        <span class="text-xs text-slate-600 font-medium">Melalui Gmail</span>
                                     </label>
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" id="settingNotifyWhatsapp" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                        <span class="text-sm text-slate-600 font-medium">Melalui WhatsApp</span>
+                                        <span class="text-xs text-slate-600 font-medium">Melalui WhatsApp</span>
                                     </label>
                                 </div>
                             </div>
 
-                            <button onclick="saveSystemSettings()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2">
-                                <i data-lucide="save" class="w-5 h-5"></i>
+                            <button onclick="saveSystemSettings()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all text-xs flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i>
                                 Simpan Konfigurasi
                             </button>
                         </div>
@@ -376,23 +372,23 @@
 
             </div>
 
-            <!-- BOTTOM NAVIGATION (Mobile UI only - Hidden on Desktop) -->
+            <!-- BOTTOM NAVIGATION (Mobile UI only) -->
             <nav class="md:hidden flex items-center justify-around py-3 bg-white border-t border-slate-200 flex-shrink-0 z-30">
                 <button onclick="switchView('dashboard')" class="mobile-nav-btn text-indigo-600 flex flex-col items-center gap-1" data-view="dashboard">
-                    <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
-                    <span class="text-xs font-bold">Dashboard</span>
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Dashboard</span>
                 </button>
                 <button onclick="switchView('activities')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="activities">
-                    <i data-lucide="list-todo" class="w-6 h-6"></i>
-                    <span class="text-xs font-bold">Aktiviti</span>
+                    <i data-lucide="list-todo" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Aktiviti</span>
                 </button>
                 <button onclick="switchView('reports')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="reports">
-                    <i data-lucide="file-bar-chart" class="w-6 h-6"></i>
-                    <span class="text-xs font-bold">Laporan</span>
+                    <i data-lucide="file-bar-chart" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">Laporan</span>
                 </button>
                 <button onclick="switchView('settings')" class="mobile-nav-btn text-slate-400 flex flex-col items-center gap-1" data-view="settings">
-                    <i data-lucide="settings" class="w-6 h-6"></i>
-                    <span class="text-xs font-bold">Tetapan</span>
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="text-[9px] font-bold">API Tetapan</span>
                 </button>
             </nav>
         </main>
@@ -403,9 +399,9 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100">
             <!-- Modal Header -->
             <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <h3 id="modalTitle" class="font-bold text-base text-slate-800">Tambah Aktiviti Akademik</h3>
+                <h3 id="modalTitle" class="font-bold text-sm text-slate-800">Tambah Aktiviti Akademik</h3>
                 <button onclick="closeActivityModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-all">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+                    <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
             
@@ -415,7 +411,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1">Kategori Portfolio</label>
-                        <select id="formCategory" required class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <select id="formCategory" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                             <option value="Teaching">Teaching</option>
                             <option value="Research">Research</option>
                             <option value="Publication">Publication</option>
@@ -426,23 +422,23 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1">Sumbangan Jam / Kredit</label>
-                        <input type="number" id="formHours" required min="1" class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: 12">
+                        <input type="number" id="formHours" required min="1" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: 12">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Tajuk / Nama Aktiviti</label>
-                    <input type="text" id="formTitle" required class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: Kuliah EE102 Semester 1">
+                    <input type="text" id="formTitle" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: Kuliah EE102 Semester 1">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1">Tarikh Dilaksanakan</label>
-                        <input type="date" id="formDate" required class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <input type="date" id="formDate" required class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1">Status Aktiviti</label>
-                        <select id="formStatus" class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <select id="formStatus" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                             <option value="Completed">Selesai (Completed)</option>
                             <option value="In Progress">Sedang Berjalan (In Progress)</option>
                             <option value="Pending">Tertangguh (Pending)</option>
@@ -452,14 +448,14 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Penerangan Ringkas (Opsional)</label>
-                    <textarea id="formDescription" rows="2" class="w-full border border-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Keterangan berkaitan sumbangan aktiviti..."></textarea>
+                    <textarea id="formDescription" rows="2" class="w-full border border-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Keterangan berkaitan sumbangan aktiviti..."></textarea>
                 </div>
 
                 <!-- Action Button -->
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" onclick="closeActivityModal()" class="px-4 py-2.5 border border-slate-200 text-slate-500 rounded-xl text-sm hover:bg-slate-50 font-medium">Batal</button>
-                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
-                        <i data-lucide="check" class="w-5 h-5"></i>
+                    <button type="button" onclick="closeActivityModal()" class="px-4 py-2.5 border border-slate-200 text-slate-500 rounded-xl text-xs hover:bg-slate-50 font-medium">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
+                        <i data-lucide="check" class="w-4 h-4"></i>
                         Simpan Aktiviti
                     </button>
                 </div>
@@ -467,13 +463,13 @@
         </div>
     </div>
 
-    <!-- 7. UPLOAD FILE DIALOG MODAL -->
+    <!-- 7. UPLOAD FILE DIALOG MODAL (MULTIPLE FILE UPLOAD READY) -->
     <div id="uploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all duration-300 opacity-0 pointer-events-none">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all duration-300 border border-slate-100">
             <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <h3 class="font-bold text-sm text-slate-800">Muat Naik Bukti Google Drive</h3>
+                <h3 class="font-bold text-xs text-slate-800">Muat Naik Bukti Google Drive</h3>
                 <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-all">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+                    <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
             
@@ -482,18 +478,19 @@
                 <input type="hidden" id="uploadCategory">
                 
                 <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-2 cursor-pointer hover:border-indigo-400 hover:bg-slate-50/50 transition-all relative">
+                    <!-- MULTIPLE ATTRIBUTE ADDED & UNLIMITED ON FRONTEND SIDE -->
                     <input type="file" id="uploadFileElement" required multiple onchange="handleFileSelected(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <div id="fileDisplayContainer" class="space-y-1">
-                        <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-500 mx-auto"></i>
-                        <h4 class="text-sm font-bold text-slate-700">Pilih Dokumen Bukti</h4>
-                        <p class="text-xs text-slate-400">PDF, PNG, JPG atau Word (Maks 1MB)</p>
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-500 mx-auto"></i>
+                        <h4 class="text-xs font-bold text-slate-700">Pilih Dokumen Bukti</h4>
+                        <p class="text-[10px] text-slate-400">Boleh pilih berbilang fail (Had 40MB)</p>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 border border-slate-200 text-slate-500 rounded-xl text-sm hover:bg-slate-50 font-medium">Batal</button>
-                    <button type="submit" id="btnUploadSubmit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
-                        <i data-lucide="cloud-lightning" class="w-5 h-5"></i>
+                    <button type="button" onclick="closeUploadModal()" class="px-4 py-2 border border-slate-200 text-slate-500 rounded-xl text-xs hover:bg-slate-50 font-medium">Batal</button>
+                    <button type="submit" id="btnUploadSubmit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-100 transition-all">
+                        <i data-lucide="cloud-lightning" class="w-4 h-4"></i>
                         Mula Muat Naik
                     </button>
                 </div>
@@ -522,8 +519,10 @@
             notifyWhatsapp: false
         };
         let isMockMode = true;
-        let selectedFileBase64 = "";
-        let selectedFileName = "";
+        
+        // KEMAS KINI: Simpanan berbilang fail
+        let selectedFilesArray = []; 
+        
         let kpiChartInstance = null;
 
         // ON RUNTIME START
@@ -582,25 +581,19 @@
                 btn.classList.add("text-slate-400");
             });
 
-            // Handle sidebar layout visibility
             const sidebar = document.getElementById("sidebar");
             const topHeader = document.querySelector("header");
             const botNav = document.querySelector("nav.md\\:hidden");
 
             if (viewId === "login") {
                 document.getElementById("loginView").classList.remove("hidden");
-                
-                // Hide sidebar completely on desktop and mobile
                 sidebar.classList.add("hidden");
-                sidebar.classList.remove("md:flex");
-                
                 topHeader.classList.add("hidden");
                 botNav.classList.add("hidden");
             } else {
-                // IMPORTANT MOBILE AUTO-HIDE FIX:
-                // We keep sidebar 'hidden' on mobile screens, and only allow 'md:flex' on tablet/desktop.
+                // Sembunyikan sidebar di skrin mobile, hanya tunjuk di skrin besar (md:flex)
                 sidebar.classList.add("hidden");
-                sidebar.classList.add("md:flex");
+                sidebar.classList.remove("flex"); 
                 
                 topHeader.classList.remove("hidden");
                 botNav.classList.remove("hidden");
@@ -709,12 +702,12 @@
             if (systemSettings.apiUrl) {
                 isMockMode = false;
                 indicator.innerText = "Cloud Sync Live";
-                indicator.className = "text-xs bg-emerald-50 text-emerald-600 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5";
+                indicator.className = "text-[10px] bg-emerald-50 text-emerald-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5";
                 document.getElementById("mockToast").classList.add("scale-0");
             } else {
                 isMockMode = true;
                 indicator.innerText = "Mock Offline Data";
-                indicator.className = "text-xs bg-amber-50 text-amber-600 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5";
+                indicator.className = "text-[10px] bg-amber-50 text-amber-600 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5";
                 document.getElementById("mockToast").classList.remove("scale-0");
                 setTimeout(() => {
                     document.getElementById("mockToast").classList.add("scale-0");
@@ -782,7 +775,7 @@
             if (sorted.length === 0) {
                 recentContainer.innerHTML = `
                     <div class="text-center py-6">
-                        <p class="text-sm text-slate-400">Tiada rekod disimpan setakat ini.</p>
+                        <p class="text-xs text-slate-400">Tiada rekod disimpan setakat ini.</p>
                     </div>
                 `;
                 return;
@@ -802,10 +795,10 @@
                 const div = document.createElement("div");
                 div.className = "flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100/70 transition-all border border-slate-100";
                 div.innerHTML = `
-                    <div class="w-2.5 h-2.5 rounded-full ${color} mt-2 flex-shrink-0"></div>
+                    <div class="w-2.5 h-2.5 rounded-full ${color} mt-1.5 flex-shrink-0"></div>
                     <div class="flex-1 overflow-hidden">
-                        <h5 class="font-semibold text-sm text-slate-800 truncate">${act.title}</h5>
-                        <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                        <h5 class="font-semibold text-xs text-slate-800 truncate">${act.title}</h5>
+                        <div class="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
                             <span class="font-medium text-slate-500">${act.category}</span>
                             <span>•</span>
                             <span>${act.date}</span>
@@ -851,7 +844,7 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                font: { size: 11, family: 'Inter' },
+                                font: { size: 10, family: 'Inter' },
                                 boxWidth: 12
                             }
                         }
@@ -898,7 +891,7 @@
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="7" class="text-center py-12 text-slate-400">
-                            <i data-lucide="folder-open" class="w-10 h-10 mx-auto mb-2 text-slate-300"></i>
+                            <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
                             Tiada rekod dijumpai. Klik 'Tambah Aktiviti' di atas.
                         </td>
                     </tr>
@@ -909,12 +902,12 @@
 
             filtered.forEach(act => {
                 // Documents display block
-                let docSection = `<span class="text-slate-400 text-xs">Tiada bukti</span>`;
+                let docSection = `<span class="text-slate-400 text-[10px]">Tiada bukti</span>`;
                 if (act.documents && act.documents.length > 0) {
                     docSection = act.documents.map(d => `
-                        <a href="${d.driveUrl}" target="_blank" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold truncate max-w-[140px] bg-indigo-50 px-2 py-0.5 rounded transition-all">
-                            <i data-lucide="file-text" class="w-4 h-4"></i>
-                            <span>${d.fileName.substring(0,10)}...</span>
+                        <a href="${d.driveUrl}" target="_blank" class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold truncate max-w-[120px] bg-indigo-50 px-2 py-0.5 rounded transition-all">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                            <span class="truncate">${d.fileName.substring(0,10)}...</span>
                         </a>
                     `).join("");
                 }
@@ -925,24 +918,24 @@
                     <td class="px-6 py-4 font-bold text-slate-600">${act.category}</td>
                     <td class="px-6 py-4">
                         <span class="font-semibold text-slate-800 block">${act.title}</span>
-                        <span class="text-xs text-slate-400 truncate block max-w-xs">${act.description || 'Tiada huraian'}</span>
+                        <span class="text-[10px] text-slate-400 truncate block max-w-xs">${act.description || 'Tiada huraian'}</span>
                     </td>
                     <td class="px-6 py-4 text-slate-500 whitespace-nowrap">${act.date}</td>
                     <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 rounded-full text-xs font-bold ${getStatusClass(act.status)}">
+                        <span class="px-2.5 py-1 rounded-full text-[9px] font-bold ${getStatusClass(act.status)}">
                             ${act.status}
                         </span>
                     </td>
                     <td class="px-6 py-4 font-extrabold text-slate-700 text-center">${act.hours} Jam</td>
                     <td class="px-6 py-4">${docSection}</td>
                     <td class="px-6 py-4 text-right whitespace-nowrap space-x-1">
-                        <button onclick="openUploadModal('${act.activityId}', '${act.category}')" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center gap-1 font-bold text-xs" title="Upload Bukti">
+                        <button onclick="openUploadModal('${act.activityId}', '${act.category}')" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all inline-flex items-center gap-1 font-bold text-[10px]" title="Upload Bukti">
                             <i data-lucide="upload" class="w-4 h-4"></i>
                         </button>
-                        <button onclick="editActivity('${encodeURIComponent(JSON.stringify(act))}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-flex" title="Edit">
+                        <button onclick="editActivity('${encodeURIComponent(JSON.stringify(act))}')" class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all inline-flex" title="Edit">
                             <i data-lucide="edit-3" class="w-4 h-4"></i>
                         </button>
-                        <button onclick="deleteActivity('${act.activityId}')" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all inline-flex" title="Padam">
+                        <button onclick="deleteActivity('${act.activityId}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all inline-flex" title="Padam">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </td>
@@ -1113,14 +1106,13 @@
             document.getElementById("uploadActivityId").value = activityId;
             document.getElementById("uploadCategory").value = category;
             
-            // Reset Drag & Drop UI
+            // Reset Drag & Drop UI & Array
             document.getElementById("fileDisplayContainer").innerHTML = `
-                <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-500 mx-auto"></i>
-                <h4 class="text-sm font-bold text-slate-700">Pilih Dokumen Bukti</h4>
-                <p class="text-xs text-slate-400">PDF, PNG, JPG atau Word (Maks 1MB)</p>
+                <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-500 mx-auto"></i>
+                <h4 class="text-xs font-bold text-slate-700">Pilih Dokumen Bukti</h4>
+                <p class="text-[10px] text-slate-400">Boleh pilih berbilang fail (Had 40MB)</p>
             `;
-            selectedFileBase64 = "";
-            selectedFileName = "";
+            selectedFilesArray = [];
 
             const modal = document.getElementById("uploadModal");
             modal.classList.remove("pointer-events-none", "opacity-0");
@@ -1134,43 +1126,86 @@
             modal.firstElementChild.classList.add("scale-95");
         }
 
-        // FILE SELECTION BLOB READER
+        // KEMAS KINI: PEMILIHAN BERBILANG FAIL (MULTIPLE FILES) DENGAN HAD 40MB
         function handleFileSelected(event) {
             const files = event.target.files;
             if (!files || files.length === 0) return;
 
-           // Sediakan array untuk memproses berbilang fail
-           selectedFilesArray = []; 
-           let totalSize = 0;
-           const MAX_SIZE_BYTES = 40 * 1024 * 1024; // 41,943,040 bait (40MB)
+            selectedFilesArray = []; 
+            let totalSize = 0;
+            const MAX_SIZE_BYTES = 40 * 1024 * 1024; // 40MB dalam bytes
 
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        totalSize += file.size;
+            // 1. Semak had saiz fail
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                totalSize += file.size;
 
-        // 1. Semak jika ada fail individu melebihi 40MB
-        if (file.size > MAX_SIZE_BYTES) {
-            showToast(`Fail "${file.name}" melebihi had maksimum 40MB.`, "warning");
-            event.target.value = "";
-            return;
+                if (file.size > MAX_SIZE_BYTES) {
+                    showToast(`Fail "${file.name}" melebihi had maksimum 40MB.`, "warning");
+                    event.target.value = "";
+                    selectedFilesArray = [];
+                    return;
+                }
+            }
+
+            if (totalSize > MAX_SIZE_BYTES) {
+                showToast("Jumlah saiz keseluruhan fail melebihi had maksimum 40MB.", "warning");
+                event.target.value = "";
+                selectedFilesArray = [];
+                return;
+            }
+
+            // 2. Baca fail-fail yang dipilih sebagai Base64
+            showLoading(true, "Membaca fail...");
+
+            const filePromises = Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        resolve({
+                            fileName: file.name,
+                            base64: e.target.result
+                        });
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            Promise.all(filePromises)
+                .then(processedFiles => {
+                    showLoading(false);
+                    selectedFilesArray = processedFiles;
+                    
+                    // Kemas kini paparan fail di UI modal
+                    const container = document.getElementById("fileDisplayContainer");
+                    if (processedFiles.length === 1) {
+                        container.innerHTML = `
+                            <i data-lucide="file-check" class="w-8 h-8 text-emerald-500 mx-auto animate-bounce"></i>
+                            <h4 class="text-xs font-bold text-emerald-600 truncate max-w-[200px] mx-auto">${processedFiles[0].fileName}</h4>
+                            <p class="text-[10px] text-slate-400">1 fail sedia untuk dimuat naik.</p>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <i data-lucide="files" class="w-8 h-8 text-emerald-500 mx-auto animate-bounce"></i>
+                            <h4 class="text-xs font-bold text-emerald-600">${processedFiles.length} Fail Dipilih</h4>
+                            <p class="text-[10px] text-slate-400">Sedia untuk dimuat naik.</p>
+                        `;
+                    }
+                    lucide.createIcons();
+                })
+                .catch(err => {
+                    showLoading(false);
+                    showToast("Gagal membaca fail.", "error");
+                    console.error(err);
+                });
         }
-    }
 
-    // 2. Semak jika jumlah keseluruhan fail melebihi 40MB
-    if (totalSize > MAX_SIZE_BYTES) {
-        showToast("Jumlah saiz keseluruhan fail melebihi had maksimum 40MB.", "warning");
-        event.target.value = "";
-        return;
-    }
-
-    // Kod selebihnya untuk membaca fail sebagai Base64...
-}
-
-        // EXECUTE DOCUMENT UPLOAD API
+        // KEMAS KINI: PENGHANTARAN FAIL BERBILANG KE DRIVE / SHEET
         function executeDocumentUpload(event) {
             event.preventDefault();
 
-            if (!selectedFileBase64) {
+            if (selectedFilesArray.length === 0) {
                 showToast("Sila pilih fail bukti terlebih dahulu.", "warning");
                 return;
             }
@@ -1178,17 +1213,19 @@
             const activityId = document.getElementById("uploadActivityId").value;
             const category = document.getElementById("uploadCategory").value;
 
-            showLoading(true, "Mengunggah fail ke Google Drive...");
+            showLoading(true, `Mengunggah ${selectedFilesArray.length} fail ke Google Drive...`);
 
             if (isMockMode) {
-                // Mock Simpanan Dokumen
+                // Mock Simpanan Dokumen Offline
                 const idx = localActivities.findIndex(a => a.activityId === activityId);
                 if (idx !== -1) {
                     if (!localActivities[idx].documents) localActivities[idx].documents = [];
-                    localActivities[idx].documents.push({
-                        docId: "DOC" + new Date().getTime(),
-                        fileName: selectedFileName,
-                        driveUrl: "https://drive.google.com/mock-file-view"
+                    selectedFilesArray.forEach((fileItem, i) => {
+                        localActivities[idx].documents.push({
+                            docId: "DOC" + new Date().getTime() + "_" + i,
+                            fileName: fileItem.fileName,
+                            driveUrl: "https://drive.google.com/mock-file-view"
+                        });
                     });
                     localStorage.setItem("apams_mock_activities", JSON.stringify(localActivities));
                 }
@@ -1199,13 +1236,12 @@
                     showToast("Fail bukti disah simpan (Mock Drive)!", "success");
                 }, 1000);
             } else {
-                // LIVE DRIVER FILE UPLOADER
+                // LIVE INTEGRASI: Hantar array files ke Google Apps Script backend
                 const payload = {
                     userId: currentUser.userId,
                     activityId,
                     category,
-                    base64: selectedFileBase64,
-                    fileName: selectedFileName
+                    files: selectedFilesArray
                 };
 
                 fetch(`${systemSettings.apiUrl}?action=uploadDocument`, {
@@ -1246,15 +1282,14 @@
                     showLoading(false);
                     if (data.success) {
                         showToast("Laporan PDF Berjaya Dijana!", "success");
-                        // Buka fail PDF secara terus di tetingkap baharu
                         window.open(data.pdfUrl, '_blank');
                     } else {
                         showToast(data.error, "error");
                     }
                 })
-                .catch((err) => {
+                .catch(() => {
                     showLoading(false);
-                    showToast("Masalah rangkaian cloud API semasa menjana PDF.", "error");
+                    showToast("Masalah rangkaian cloud API.", "error");
                 });
         }
 
@@ -1280,7 +1315,6 @@
 
             if (apiUrl) {
                 isMockMode = false;
-                // Simpan tetapan pengguna ke Cloud Database untuk penyelarasan auto-notifikasi
                 fetch(`${apiUrl}?action=saveSettings`, {
                     method: "POST",
                     body: JSON.stringify({
@@ -1322,9 +1356,9 @@
                 loader.id = "apamsLoader";
                 loader.className = "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center z-50 transition-all duration-300";
                 loader.innerHTML = `
-                    <div class="bg-white px-10 py-8 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center space-y-4">
-                        <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <p id="loaderMessage" class="text-sm font-semibold text-slate-600">${message}</p>
+                    <div class="bg-white px-8 py-6 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center space-y-3">
+                        <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <p id="loaderMessage" class="text-xs font-semibold text-slate-600">${message}</p>
                     </div>
                 `;
                 document.body.appendChild(loader);
@@ -1347,24 +1381,22 @@
 
             messageElement.innerText = message;
 
-            // Dynamic styles
             if (type === "success") {
-                iconContainer.className = "p-1.5 rounded-full bg-emerald-500";
+                iconContainer.className = "p-1 rounded-full bg-emerald-500";
                 iconElement.setAttribute("data-lucide", "check-circle");
             } else if (type === "error") {
-                iconContainer.className = "p-1.5 rounded-full bg-rose-500";
+                iconContainer.className = "p-1 rounded-full bg-rose-500";
                 iconElement.setAttribute("data-lucide", "x-circle");
             } else if (type === "warning") {
-                iconContainer.className = "p-1.5 rounded-full bg-amber-500";
+                iconContainer.className = "p-1 rounded-full bg-amber-500";
                 iconElement.setAttribute("data-lucide", "alert-triangle");
             } else {
-                iconContainer.className = "p-1.5 rounded-full bg-indigo-500";
+                iconContainer.className = "p-1 rounded-full bg-indigo-500";
                 iconElement.setAttribute("data-lucide", "info");
             }
 
             lucide.createIcons();
 
-            // Animate toast in
             toast.classList.remove("translate-y-24", "opacity-0");
             toast.classList.add("translate-y-0", "opacity-100");
 
