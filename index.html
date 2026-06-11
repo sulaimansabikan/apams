@@ -482,7 +482,7 @@
                 <input type="hidden" id="uploadCategory">
                 
                 <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-2 cursor-pointer hover:border-indigo-400 hover:bg-slate-50/50 transition-all relative">
-                    <input type="file" id="uploadFileElement" required onchange="handleFileSelected(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <input type="file" id="uploadFileElement" required multiple onchange="handleFileSelected(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <div id="fileDisplayContainer" class="space-y-1">
                         <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-500 mx-auto"></i>
                         <h4 class="text-sm font-bold text-slate-700">Pilih Dokumen Bukti</h4>
